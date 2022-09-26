@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm, trange
 
 from model import Network
-from utils import make_dataset, seed_everything, weights_init
+from utils import make_dataset, seed_everything, show_curves, weights_init
 
 
 class ArgumentParser(Tap):
@@ -112,6 +112,7 @@ def main(args: ArgumentParser):
         for key in batch_metrics.keys():
             metrics[key].append(np.mean(batch_metrics[key]))
 
+        logging.info("#######################################################")
         metric_msg = f"""
             Train loss: {metrics['train_loss'][-1]}\t
             Train acc: {metrics['train_acc'][-1]}
@@ -119,7 +120,6 @@ def main(args: ArgumentParser):
         logging.info(f"Epoch {epoch}/{args.epoch_size}\t{metric_msg}")
 
         if epoch % args.every_num_epochs_for_val == 0:
-            logging.info("Validating model...")
             batch_metrics = evaluate(model, val_dataloader, device)
             for key in batch_metrics.keys():
                 metrics[key].append(np.mean(batch_metrics[key]))
@@ -138,7 +138,7 @@ def main(args: ArgumentParser):
             """
             logging.info(f"Epoch {epoch}/{args.epoch_size}\t{metric_msg}")
 
-    # TODO: Generate loss-epoch & acc-epoch curve graph for train and val
+    show_curves(args.output_folder, metrics, args.every_num_epochs_for_val)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ from typing import Tuple, Union
 
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 from dataset import SportDataset
 
@@ -66,3 +67,33 @@ def weights_init(m):
     elif classname.find("BatchNorm") != -1:
         torch.nn.init.normal_(m.weight, 1.0, 0.02)
         torch.nn.init.zeros_(m.bias)
+
+
+def show_curves(path: str, metrics: dict, every_num_epochs_for_val: int):
+    train_loss = metrics["train_loss"]
+    val_loss = metrics["val_loss"]
+    train_acc = metrics["train_acc"]
+    val_acc = metrics["val_acc"]
+
+    train_epochs = list(range(1, len(train_loss) + 1))
+    val_epochs = list(range(1, len(train_loss) + 1, every_num_epochs_for_val))
+
+    plt.figure(fontsize=14)
+    plt.title("loss curve")
+    plt.plot(train_epochs, train_loss, "ro", label="train loss")
+    plt.plot(val_epochs, val_loss, "bo", label="validation loss")
+    plt.xlabel("epoch")
+    plt.ylabel("loss")
+    plt.legend()
+    plt.savefig(Path(path) / "loss.png")
+
+    plt.figure(fontsize=14)
+    plt.title("accuracy curve")
+    epochs = list(range(1, len(train_loss) + 1))
+    plt.plot(epochs, train_acc, "ro", label="train accuracy")
+    epochs = list(range(1, len(train_loss) + 1, every_num_epochs_for_val))
+    plt.plot(epochs, val_acc, "bo", label="validation accuracy")
+    plt.xlabel("epoch")
+    plt.ylabel("accuracy")
+    plt.legend()
+    plt.savefig(Path(path) / "accuracy.png")
