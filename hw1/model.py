@@ -1,6 +1,5 @@
 ﻿import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from utils import make_convs
 
@@ -75,13 +74,13 @@ class Network(nn.Module):
             nn.MaxPool2d(2, stride=2),
             # 7 * 7 * 512
             nn.Flatten(),
-            nn.Linear(in_features=7 * 7 * 512, out_features=4096),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
-            nn.Linear(in_features=4096, out_features=4096),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
-            nn.Linear(in_features=4096, out_features=out_channels),
+            nn.Linear(in_features=7 * 7 * 512, out_features=out_channels),
+            # nn.ReLU(inplace=True),
+            # nn.Dropout(p=0.5),
+            # nn.Linear(in_features=4096, out_features=4096),
+            # nn.ReLU(inplace=True),
+            # nn.Dropout(p=0.5),
+            # nn.Linear(in_features=4096, out_features=out_channels),
         )
 
     @property
@@ -89,10 +88,6 @@ class Network(nn.Module):
         return sum(
             param.numel() for param in self.parameters() if param.requires_grad
         )
-
-    def predict(self, x: torch.Tensor) -> torch.Tensor:
-        labels = self(x)
-        return F.softmax(labels, dim=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.main(x)
@@ -102,5 +97,5 @@ if __name__ == "__main__":
     inputs = torch.randn((1, 3, 224, 224))
     model = Network(3, 10)
     print(model)
-    labels = model.predict(inputs)
+    labels = model(inputs)
     print(labels)

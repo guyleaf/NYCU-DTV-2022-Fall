@@ -1,17 +1,18 @@
-﻿from datetime import datetime
-import logging
+﻿import logging
 import os
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from tap import Tap
 from torch.utils.data import DataLoader
 from tqdm import tqdm, trange
 
 from model import Network
-from utils import make_dataset, seed_everything
+from utils import make_dataset, seed_everything, weights_init
 
 
 class ArgumentParser(Tap):
@@ -30,36 +31,44 @@ def train(
     model: Network,
     dataloader: DataLoader,
     optimizer: torch.optim.Optimizer,
+    device: str = "cpu",
 ) -> dict:
     model.train()
 
-    loss_fn = nn.CrossEntropyLoss(reduction="sum")
+    loss_fn = nn.CrossEntropyLoss(reduction="mean")
     batch_metrics = dict(train_loss=[], train_acc=[])
-    for imgs, labels in tqdm(dataloader, desc="Batch", leave=False):
-        pred_labels: torch.Tensor = model(imgs)
+    for imgs, labels in tqdm(dataloader, desc="Train batch", leave=False):
+        imgs = imgs.to(device)
+        labels = labels.to(device)
+        pred_logits: torch.Tensor = model(imgs)
 
-        loss = loss_fn(pred_labels, labels)
+        loss = loss_fn(pred_logits, labels)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        acc = torch.eq(torch.argmax(pred_labels, dim=1), labels).sum().float()
+        pred_labels = F.softmax(pred_logits.detach(), dim=1)
+        acc = torch.eq(torch.argmax(pred_labels, dim=1), labels).float().mean()
         batch_metrics["train_loss"].append(loss.item())
         batch_metrics["train_acc"].append(acc.item())
 
     return batch_metrics
 
 
-def evaluate(model: Network, dataloader: DataLoader):
+@torch.no_grad()
+def evaluate(model: Network, dataloader: DataLoader, device: str = "cpu"):
     model.eval()
 
-    loss_fn = nn.CrossEntropyLoss(reduction="sum")
+    loss_fn = nn.CrossEntropyLoss(reduction="mean")
     batch_metrics = dict(val_loss=[], val_acc=[])
-    for imgs, labels in tqdm(dataloader, desc="Batch", leave=False):
-        pred_labels: torch.Tensor = model(imgs)
+    for imgs, labels in tqdm(dataloader, desc="Val batch", leave=False):
+        imgs = imgs.to(device)
+        labels = labels.to(device)
+        pred_logits: torch.Tensor = model(imgs)
 
-        loss = loss_fn(pred_labels, labels)
-        acc = torch.eq(torch.argmax(pred_labels, dim=1), labels).sum().float()
+        loss = loss_fn(pred_logits, labels)
+        pred_labels = F.softmax(pred_logits, dim=1)
+        acc = torch.eq(torch.argmax(pred_labels, dim=1), labels).float().mean()
 
         batch_metrics["val_loss"].append(loss.item())
         batch_metrics["val_acc"].append(acc.item())
@@ -88,6 +97,7 @@ def main(args: ArgumentParser):
     )
 
     model = Network(3, 10)
+    model.apply(weights_init)
     logging.info(f"# of parameters in model: {model.num_parameters}")
 
     optimizer = torch.optim.Adam(
@@ -98,8 +108,7 @@ def main(args: ArgumentParser):
     metrics = dict(train_loss=[], val_loss=[], train_acc=[], val_acc=[])
     best_val_acc = 0
     for epoch in trange(args.epoch_size, desc="Epoch"):
-        batch_metrics = train(model, train_dataloader, optimizer)
-
+        batch_metrics = train(model, train_dataloader, optimizer, device)
         for key in batch_metrics.keys():
             metrics[key].append(np.mean(batch_metrics[key]))
 
@@ -111,14 +120,17 @@ def main(args: ArgumentParser):
 
         if epoch % args.every_num_epochs_for_val == 0:
             logging.info("Validating model...")
-            val_metrics = evaluate(model, val_dataloader)
-            for key in val_metrics.keys():
-                metrics[key].append(np.mean(val_metrics[key]))
+            batch_metrics = evaluate(model, val_dataloader, device)
+            for key in batch_metrics.keys():
+                metrics[key].append(np.mean(batch_metrics[key]))
 
             if best_val_acc < metrics["val_acc"][-1]:
                 best_val_acc = metrics["val_acc"][-1]
                 content = dict(model=model.state_dict(), metrics=metrics)
-                torch.save(content, Path(args.output_folder) / "model.pth")
+                torch.save(
+                    content,
+                    Path(args.output_folder) / f"best_model_epoch_{epoch}.pth",
+                )
 
             metric_msg = f"""
                 Val loss: {metrics['val_loss'][-1]}\t

@@ -45,6 +45,7 @@ def make_convs(
                 bias=bias,
             )
         )
+        layers.append(torch.nn.BatchNorm2d(out_channels))
         layers.append(activation_fn)
         in_channels = out_channels
     return layers
@@ -54,3 +55,14 @@ def seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+
+
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1 or classname.find("Linear") != -1:
+        torch.nn.init.normal_(m.weight, 0.0, 0.02)
+        if m.bias is not None:
+            torch.nn.init.zeros_(m.bias)
+    elif classname.find("BatchNorm") != -1:
+        torch.nn.init.normal_(m.weight, 1.0, 0.02)
+        torch.nn.init.zeros_(m.bias)

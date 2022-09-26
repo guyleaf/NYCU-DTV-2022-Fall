@@ -1,4 +1,5 @@
-﻿from pathlib import Path
+﻿import os
+from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
@@ -26,6 +27,7 @@ class SportDataset(Dataset):
     ) -> None:
         super().__init__()
         self._img_folder = img_folder
+        self._img_names = os.listdir(img_folder)
         if label_file is not None:
             self._labels = pd.read_csv(label_file)
         self._transforms = transforms
@@ -35,9 +37,13 @@ class SportDataset(Dataset):
         return self._transforms(img)
 
     def __len__(self) -> int:
-        return self._labels.shape[0]
+        return len(self._img_names)
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, int]:
-        img_name, label = self._labels.iloc[index]
+        if hasattr(self, "_labels"):
+            img_name, label = self._labels.iloc[index]
+        else:
+            label = -1
+            img_name = self._img_names[index]
         img = self._get_img(img_name)
         return img, label

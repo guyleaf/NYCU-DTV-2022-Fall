@@ -1,8 +1,8 @@
-﻿pillow
+﻿typed-argument-parser
+tqdm
+pillow
 numpy
 matplotlib
 pandas
-torch ~= 1.12.1
-torchvision ~= 0.13.0
 flake8
 black
