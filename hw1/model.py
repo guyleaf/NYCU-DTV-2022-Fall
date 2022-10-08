@@ -9,7 +9,7 @@ class Network(nn.Module):
         super().__init__()
 
         kernel_size: int = 3
-        activation: str = "relu"
+        activation: str = "leakyRelu"
 
         self.main = nn.Sequential(
             # 224 * 224 * in_channels

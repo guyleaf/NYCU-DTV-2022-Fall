@@ -28,7 +28,7 @@ def make_convs(
     if activation == "relu":
         activation_fn = torch.nn.ReLU(inplace=True)
     elif activation == "leakyRelu":
-        activation_fn = torch.nn.LeakyReLU(inplace=True)
+        activation_fn = torch.nn.LeakyReLU(0.2, inplace=True)
     else:
         raise RuntimeError(
             f"The activation function {activation} is not implemented."
@@ -58,7 +58,7 @@ def seed_everything(seed: int) -> None:
     torch.manual_seed(seed)
 
 
-def weights_init(m):
+def weights_init(m: torch.nn.Module):
     classname = m.__class__.__name__
     if classname.find("Conv") != -1 or classname.find("Linear") != -1:
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
@@ -77,22 +77,22 @@ def show_curves(path: str, metrics: dict, every_num_epochs_for_val: int):
 
     train_epochs = list(range(1, len(train_loss) + 1))
     val_epochs = list(range(1, len(train_loss) + 1, every_num_epochs_for_val))
+    train_epochs = train_epochs[1:]
+    val_epochs = val_epochs[1:]
 
-    plt.figure(fontsize=14)
-    plt.title("loss curve")
-    plt.plot(train_epochs, train_loss, "ro", label="train loss")
-    plt.plot(val_epochs, val_loss, "bo", label="validation loss")
+    plt.figure()
+    plt.title("loss curve", fontsize=14)
+    plt.plot(train_epochs, train_loss[1:], "--ro", label="train loss")
+    plt.plot(val_epochs, val_loss[1:], "--bo", label="validation loss")
     plt.xlabel("epoch")
     plt.ylabel("loss")
     plt.legend()
     plt.savefig(Path(path) / "loss.png")
 
-    plt.figure(fontsize=14)
-    plt.title("accuracy curve")
-    epochs = list(range(1, len(train_loss) + 1))
-    plt.plot(epochs, train_acc, "ro", label="train accuracy")
-    epochs = list(range(1, len(train_loss) + 1, every_num_epochs_for_val))
-    plt.plot(epochs, val_acc, "bo", label="validation accuracy")
+    plt.figure()
+    plt.title("accuracy curve", fontsize=14)
+    plt.plot(train_epochs, train_acc[1:], "--ro", label="train accuracy")
+    plt.plot(val_epochs, val_acc[1:], "--bo", label="validation accuracy")
     plt.xlabel("epoch")
     plt.ylabel("accuracy")
     plt.legend()

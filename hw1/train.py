@@ -111,38 +111,41 @@ def main(args: ArgumentParser):
     model.to(device)
     metrics = dict(train_loss=[], val_loss=[], train_acc=[], val_acc=[])
     best_val_acc = 0
-    for epoch in trange(1, args.epoch_size + 1, desc="Epoch"):
-        batch_metrics = train(model, train_dataloader, optimizer, device)
-        for key in batch_metrics.keys():
-            metrics[key].append(np.mean(batch_metrics[key]))
-
-        logging.info("#######################################################")
-        metric_msg = f"""
-            Train loss: {metrics['train_loss'][-1]}\t
-            Train acc: {metrics['train_acc'][-1]}
-        """
-        logging.info(f"Epoch {epoch}/{args.epoch_size}\t{metric_msg}")
-
-        if epoch % args.every_num_epochs_for_val == 0:
-            batch_metrics = evaluate(model, val_dataloader, device)
+    try:
+        for epoch in trange(1, args.epoch_size + 1, desc="Epoch"):
+            batch_metrics = train(model, train_dataloader, optimizer, device)
             for key in batch_metrics.keys():
                 metrics[key].append(np.mean(batch_metrics[key]))
 
-            if best_val_acc < metrics["val_acc"][-1]:
-                best_val_acc = metrics["val_acc"][-1]
-                content = dict(model=model.state_dict(), metrics=metrics)
-                torch.save(
-                    content,
-                    Path(args.output_folder) / f"best_model_epoch_{epoch}.pth",
-                )
-
+            logging.info(
+                "#######################################################"
+            )
             metric_msg = f"""
-                Val loss: {metrics['val_loss'][-1]}\t
-                Val acc: {metrics['val_acc'][-1]}
-            """
-            logging.info(f"Epoch {epoch}/{args.epoch_size}\t{metric_msg}")
+            Train loss: {metrics['train_loss'][-1]}
+            Train acc: {metrics['train_acc'][-1]}"""
+            logging.info(f"Epoch {epoch}/{args.epoch_size}\n{metric_msg}")
 
-    show_curves(args.output_folder, metrics, args.every_num_epochs_for_val)
+            if epoch % args.every_num_epochs_for_val == 0:
+                batch_metrics = evaluate(model, val_dataloader, device)
+                for key in batch_metrics.keys():
+                    metrics[key].append(np.mean(batch_metrics[key]))
+
+                if best_val_acc < metrics["val_acc"][-1]:
+                    best_val_acc = metrics["val_acc"][-1]
+                    content = dict(model=model.state_dict(), metrics=metrics)
+                    torch.save(
+                        content,
+                        Path(args.output_folder)
+                        / f"best_model_epoch_{epoch}.pth",
+                    )
+
+                metric_msg = f"""
+            Val loss: {metrics['val_loss'][-1]}
+            Val acc: {metrics['val_acc'][-1]}
+                """
+                logging.info(metric_msg)
+    finally:
+        show_curves(args.output_folder, metrics, args.every_num_epochs_for_val)
 
 
 if __name__ == "__main__":
@@ -156,7 +159,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(
         filename=Path(args.output_folder) / "info.log",
-        format="%(levelname)s:%(message)s",
+        format="%(message)s",
         level=logging.INFO,
     )
 
