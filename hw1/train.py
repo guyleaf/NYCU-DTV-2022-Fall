@@ -20,6 +20,7 @@ class ArgumentParser(Tap):
     output_folder: str = "results"
     lr: float = 0.001  # the learning rate for training
     momentum: float = 0.9
+    weight_decay: float = 0
     batch_size: int = 100  # the size of mini-batch
     epoch_size: int = 100  # the size of epochs
     every_num_epochs_for_val: int = 10
@@ -101,13 +102,16 @@ def main(args: ArgumentParser):
     logging.info(f"# of parameters in model: {model.num_parameters}")
 
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=args.lr, betas=(args.momentum, 0.999)
+        model.parameters(),
+        lr=args.lr,
+        betas=(args.momentum, 0.999),
+        weight_decay=args.weight_decay,
     )
 
     model.to(device)
     metrics = dict(train_loss=[], val_loss=[], train_acc=[], val_acc=[])
     best_val_acc = 0
-    for epoch in trange(args.epoch_size, desc="Epoch"):
+    for epoch in trange(1, args.epoch_size + 1, desc="Epoch"):
         batch_metrics = train(model, train_dataloader, optimizer, device)
         for key in batch_metrics.keys():
             metrics[key].append(np.mean(batch_metrics[key]))
