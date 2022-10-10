@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 
 
+# TODO: Add efficient option from https://arxiv.org/pdf/1707.06990.pdf
+
 def build_depthwise_separable_conv2d(
     in_channels: int,
     out_channels: int,
