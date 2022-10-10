@@ -5,13 +5,19 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from dataset import SportDataset
+from dataset import DEFAULT_TEST_TRANSFORMS, SportDataset
 
 
 def make_dataset(data_folder: str, mode: str = "train") -> SportDataset:
     img_folder = str(Path(data_folder) / mode)
-    label_file = str(Path(data_folder) / f"{mode}.csv")
-    return SportDataset(img_folder, label_file)
+    label_file = None
+    if mode != "test":
+        label_file = str(Path(data_folder) / f"{mode}.csv")
+        return SportDataset(img_folder, label_file)
+    else:
+        return SportDataset(
+            img_folder, label_file, transforms=DEFAULT_TEST_TRANSFORMS
+        )
 
 
 def seed_everything(seed: int) -> None:
@@ -44,8 +50,8 @@ def show_curves(path: str, metrics: dict, every_num_epochs_for_val: int):
 
     plt.figure()
     plt.title("loss curve", fontsize=14)
-    plt.plot(train_epochs, train_loss[1:], "--ro", label="train loss")
-    plt.plot(val_epochs, val_loss[1:], "--bo", label="validation loss")
+    plt.plot(train_epochs, train_loss[1:], "--ro", label="train")
+    plt.plot(val_epochs, val_loss[1:], "--bo", label="validation")
     plt.xlabel("epoch")
     plt.ylabel("loss")
     plt.legend()
@@ -53,8 +59,8 @@ def show_curves(path: str, metrics: dict, every_num_epochs_for_val: int):
 
     plt.figure()
     plt.title("accuracy curve", fontsize=14)
-    plt.plot(train_epochs, train_acc[1:], "--ro", label="train accuracy")
-    plt.plot(val_epochs, val_acc[1:], "--bo", label="validation accuracy")
+    plt.plot(train_epochs, train_acc[1:], "--ro", label="train")
+    plt.plot(val_epochs, val_acc[1:], "--bo", label="validation")
     plt.xlabel("epoch")
     plt.ylabel("accuracy")
     plt.legend()

@@ -1,0 +1,1 @@
+call python .\train.py --lr 0.01 --weight_decay 0.02 --batch_size 32 --epoch_size 100 --every_num_epochs_for_val 1 --num_workers 4

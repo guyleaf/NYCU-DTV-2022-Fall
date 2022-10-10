@@ -1,118 +1,69 @@
-﻿from typing import Tuple, Union
+﻿from typing import Tuple
+
 import torch
 import torch.nn as nn
 
-
-def make_convs(
-    num_layers: int,
-    kernel_size: Union[int, Tuple[int, int]],
-    in_channels: int,
-    out_channels: int,
-    stride: Union[int, Tuple[int, int]] = 1,
-    padding: Union[int, Tuple[int, int]] = 1,
-    bias: bool = True,
-    activation: str = "relu",
-) -> list[torch.nn.Module]:
-    if activation == "relu":
-        activation_fn = torch.nn.ReLU(inplace=True)
-    elif activation == "leakyRelu":
-        activation_fn = torch.nn.LeakyReLU(0.2, inplace=True)
-    else:
-        raise RuntimeError(
-            f"The activation function {activation} is not implemented."
-        )
-
-    layers = []
-    for _ in range(num_layers):
-        layers.append(
-            torch.nn.Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size,
-                stride=stride,
-                padding=padding,
-                bias=bias,
-            )
-        )
-        layers.append(torch.nn.BatchNorm2d(out_channels))
-        layers.append(activation_fn)
-        in_channels = out_channels
-    return layers
+from dense import (
+    DenseBlock,
+    build_depthwise_separable_conv2d,
+    build_transition_layer,
+)
 
 
 class Network(nn.Module):
     def __init__(self, in_channels: int = 3, out_channels: int = 10) -> None:
         super().__init__()
 
-        kernel_size: int = 3
-        activation: str = "leakyRelu"
+        block_config: Tuple[int, ...] = (6, 12, 24, 16)
+        growth_rate: int = 32
+        drop_rate: float = 0.5
 
-        self.main = nn.Sequential(
-            # 224 * 224 * in_channels
-            *make_convs(
-                2,
-                kernel_size,
-                in_channels,
-                64,
-                stride=1,
-                padding=1,
-                bias=True,
-                activation=activation,
+        first_out_channels = 2 * growth_rate
+        self.firstBlock = nn.Sequential(
+            build_depthwise_separable_conv2d(
+                in_channels, first_out_channels, 7, 2, 3, pre_activation=False
             ),
-            nn.MaxPool2d(2, stride=2),
-            # 112 * 112 * 64
-            *make_convs(
-                2,
-                kernel_size,
-                64,
-                128,
-                stride=1,
-                padding=1,
-                bias=True,
-                activation=activation,
-            ),
-            nn.MaxPool2d(2, stride=2),
-            # 56 * 56 * 128
-            *make_convs(
-                4,
-                kernel_size,
-                128,
-                256,
-                stride=1,
-                padding=1,
-                bias=True,
-                activation=activation,
-            ),
-            nn.MaxPool2d(2, stride=2),
-            # 28 * 28 * 256
-            *make_convs(
-                4,
-                kernel_size,
-                256,
-                512,
-                stride=1,
-                padding=1,
-                bias=True,
-                activation=activation,
-            ),
-            nn.MaxPool2d(2, stride=2),
-            # 14 * 14 * 512
-            *make_convs(
-                4,
-                kernel_size,
-                512,
-                512,
-                stride=1,
-                padding=1,
-                bias=True,
-                activation=activation,
-            ),
-            nn.MaxPool2d(2, stride=2),
-            # 7 * 7 * 512
-            nn.Flatten(),
-            nn.Linear(in_features=7 * 7 * 512, out_features=out_channels),
+            # nn.Conv2d(
+            #     in_channels=in_channels,
+            #     out_channels=first_out_channels,
+            #     kernel_size=7,
+            #     stride=2,
+            #     padding=3,
+            #     bias=False,
+            # ),
+            # nn.BatchNorm2d(first_out_channels),
+            # nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
         )
 
+        in_channels = first_out_channels
+        self.blocks = nn.Sequential()
+        for i, num_blocks in enumerate(block_config):
+            block = DenseBlock(
+                in_channels=in_channels,
+                num_layers=num_blocks,
+                growth_rate=growth_rate,
+                drop_rate=drop_rate,
+            )
+            self.blocks.add_module(f"denseBlock{i + 1}", block)
+            in_channels = in_channels + num_blocks * growth_rate
+            if i != len(block_config) - 1:
+                self.blocks.add_module(
+                    f"transitionLayer{i + 1}",
+                    build_transition_layer(in_channels, in_channels // 2),
+                )
+                in_channels = in_channels // 2
+
+        self.blocks.append(nn.BatchNorm2d(in_channels))
+        self.blocks.append(nn.ReLU(inplace=True))
+        self.blocks.append(nn.AdaptiveMaxPool2d(1))
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features=in_channels, out_features=out_channels),
+        )
+
+    @torch.jit.unused
     @property
     def num_parameters(self) -> int:
         return sum(
@@ -120,12 +71,16 @@ class Network(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.main(x)
+        x = self.firstBlock(x)
+        y = self.blocks(x)
+        y = self.classifier(y)
+        return y
 
 
 if __name__ == "__main__":
-    inputs = torch.randn((1, 3, 224, 224))
+    inputs = torch.randn((2, 3, 224, 224))
     model = Network(3, 10)
     print(model)
     labels = model(inputs)
     print(labels)
+    print(model.num_parameters)
