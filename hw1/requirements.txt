@@ -1,0 +1,8 @@
+﻿typed-argument-parser
+tqdm
+pillow
+numpy
+matplotlib
+pandas
+flake8
+black
