@@ -136,7 +136,7 @@ def main(args: ArgumentParser):
                     torch.save(
                         content,
                         Path(args.output_folder)
-                        / f"best_model_epoch_{epoch}.pth",
+                        / f"best_model_epoch_{epoch}.pt",
                     )
 
                 metric_msg = f"""

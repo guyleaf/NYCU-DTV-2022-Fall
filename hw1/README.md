@@ -50,8 +50,6 @@ transforms.Normalize(
 )
 ```
 
-
-
 ## Hyper-parameters
 
 * Loss function: Cross-Entropy with softmax
@@ -143,7 +141,7 @@ DenseNet 論文相關作者發表另一篇 paper，[Memory-Efficient Implementat
 
 在使用相同的 hyper-parameters 下，除了第一層 7 x 7 Conv 固定使用 max pooling 以外，其餘 pooling layer 依照實驗做替換。
 
-左圖是 MaxPooling，右圖是 AveragePooling，可以發現左圖收斂速度比右圖還要來的慢，需要更多的 epochs 來訓練，猜測可能是因為 AveragePooling 容易被數值大的 cell 所影響，導致平均值會有偏差，無法有效地將 feature maps 傳遞給下一層。
+左圖是 MaxPooling，右圖是 AveragePooling，可以發現右圖收斂速度比左圖還要來的慢，需要更多的 epochs 來訓練，猜測可能是因為 AveragePooling 容易被數值大的 cell 所影響，導致平均值會有偏差，無法有效地將 feature maps 傳遞給下一層。
 
 而 MaxPooling 相當於取最重要的 feature 來代表該點的 feature，比較 robust，不容易被奇怪數值影響。
 
