@@ -13,7 +13,9 @@
 * Typed-argument-parser: 1.7.2
 
 ## How to reproduce?
-
+### Installation
+#### Windows
+#### Linux
 ### Training
 
 ```sh
