@@ -75,7 +75,8 @@ Step1. Install YOLOX from source.
 ```shell
 git clone git@github.com:Megvii-BaseDetection/YOLOX.git
 cd YOLOX
-pip3 install -v -e .  # or  python3 setup.py develop
+pip3 install -v -e .  # or python3 setup.py develop
+# if you want to use cuda version, you can add this --extra-index-url https://download.pytorch.org/whl/cu113
 ```
 
 </details>
