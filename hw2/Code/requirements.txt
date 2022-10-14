@@ -11,6 +11,7 @@ thop
 ninja
 tabulate
 tensorboard
+albumentations ~= 1.3.0
 
 # verified versions
 # pycocotools corresponds to https://github.com/ppwwyyxx/cocoapi
