@@ -26,12 +26,12 @@ class Exp(MyExp):
 
     def get_data_loader(self, batch_size, is_distributed, no_aug=False, cache_img=False):
         from yolox.data import (
-            VOCDetection,
+            VOCDetectionDataset,
             TrainTransform,
             YoloBatchSampler,
             DataLoader,
             InfiniteSampler,
-            MosaicDetection,
+            MosaicDataset,
             worker_init_reset_seed,
         )
         from yolox.utils import (
@@ -41,7 +41,7 @@ class Exp(MyExp):
         local_rank = get_local_rank()
 
         with wait_for_the_master(local_rank):
-            dataset = VOCDetection(
+            dataset = VOCDetectionDataset(
                 data_dir=os.path.join(get_yolox_datadir(), "VOCdevkit"),
                 image_sets=[('2007', 'trainval'), ('2012', 'trainval')],
                 img_size=self.input_size,
@@ -52,7 +52,7 @@ class Exp(MyExp):
                 cache=cache_img,
             )
 
-        dataset = MosaicDetection(
+        dataset = MosaicDataset(
             dataset,
             mosaic=not no_aug,
             img_size=self.input_size,
@@ -97,9 +97,9 @@ class Exp(MyExp):
         return train_loader
 
     def get_eval_loader(self, batch_size, is_distributed, testdev=False, legacy=False):
-        from yolox.data import VOCDetection, ValTransform
+        from yolox.data import VOCDetectionDataset, ValTransform
 
-        valdataset = VOCDetection(
+        valdataset = VOCDetectionDataset(
             data_dir=os.path.join(get_yolox_datadir(), "VOCdevkit"),
             image_sets=[('2007', 'test')],
             img_size=self.test_size,

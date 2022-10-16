@@ -4,6 +4,7 @@
 
 import bisect
 from functools import wraps
+from typing import Callable
 
 from torch.utils.data.dataset import ConcatDataset as torchConcatDataset
 from torch.utils.data.dataset import Dataset as torchDataset
@@ -60,20 +61,23 @@ class MixConcatDataset(torchConcatDataset):
 
 
 class Dataset(torchDataset):
-    """ This class is a subclass of the base :class:`torch.utils.data.Dataset`,
+    """This class is a subclass of the base :class:`torch.utils.data.Dataset`,
     that enables on the fly resizing of the ``input_dim``.
 
     Args:
-        input_dimension (tuple): (width,height) tuple with default dimensions of the network
+        input_dimension (tuple): (width, height) tuple with default dimensions of the network
     """
 
-    def __init__(self, input_dimension, mosaic=True):
+    def __init__(self, input_dimension: tuple[int, int], mosaic: bool = True):
         super().__init__()
-        self.__input_dim = input_dimension[:2]
+        assert (
+            len(input_dimension) == 2
+        ), "The format of input_dimension should be (width, height)."
+        self.__input_dim = input_dimension
         self.enable_mosaic = mosaic
 
     @property
-    def input_dim(self):
+    def input_dim(self) -> tuple[int, int]:
         """
         Dimension that can be used by transforms to set the correct image size, etc.
         This allows transforms to have a single source of truth
@@ -86,8 +90,11 @@ class Dataset(torchDataset):
             return self._input_dim
         return self.__input_dim
 
+    def pull_item(self, index: int) -> tuple:
+        raise NotImplementedError("The method pull_item is not implemented.")
+
     @staticmethod
-    def mosaic_getitem(getitem_fn):
+    def mosaic_getitem(getitem_fn: Callable):
         """
         Decorator method that needs to be used around the ``__getitem__`` method. |br|
         This decorator enables the closing mosaic

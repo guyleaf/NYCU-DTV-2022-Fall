@@ -9,8 +9,9 @@ import cv2
 import numpy as np
 from pycocotools.coco import COCO
 
-from ..dataloading import get_yolox_datadir
-from .datasets_wrapper import Dataset
+from yolox.data.dataloading import get_yolox_datadir
+
+from .wrappers import Dataset
 
 
 def remove_useless_info(coco):
@@ -61,7 +62,9 @@ class COCODataset(Dataset):
         self.data_dir = data_dir
         self.json_file = json_file
 
-        self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
+        self.coco = COCO(
+            os.path.join(self.data_dir, "annotations", self.json_file)
+        )
         remove_useless_info(self.coco)
         self.ids = self.coco.getImgIds()
         self.class_ids = sorted(self.coco.getCatIds())
@@ -94,7 +97,9 @@ class COCODataset(Dataset):
         )
         max_h = self.img_size[0]
         max_w = self.img_size[1]
-        cache_file = os.path.join(self.data_dir, f"img_resized_cache_{self.name}.array")
+        cache_file = os.path.join(
+            self.data_dir, f"img_resized_cache_{self.name}.array"
+        )
         if not os.path.exists(cache_file):
             logger.info(
                 "Caching images for the first time. This might take about 20 minutes for COCO"
@@ -177,7 +182,9 @@ class COCODataset(Dataset):
 
     def load_resized_img(self, index):
         img = self.load_image(index)
-        r = min(self.img_size[0] / img.shape[0], self.img_size[1] / img.shape[1])
+        r = min(
+            self.img_size[0] / img.shape[0], self.img_size[1] / img.shape[1]
+        )
         resized_img = cv2.resize(
             img,
             (int(img.shape[1] * r), int(img.shape[0] * r)),

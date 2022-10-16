@@ -134,7 +134,7 @@ class Exp(BaseExp):
             YoloBatchSampler,
             DataLoader,
             InfiniteSampler,
-            MosaicDetection,
+            MosaicDataset,
             worker_init_reset_seed,
         )
         from yolox.utils import wait_for_the_master
@@ -151,7 +151,7 @@ class Exp(BaseExp):
                 cache=cache_img,
             )
 
-        dataset = MosaicDetection(
+        dataset = MosaicDataset(
             dataset,
             mosaic=not no_aug,
             img_size=self.input_size,
