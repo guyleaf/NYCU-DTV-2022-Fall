@@ -29,7 +29,9 @@ def filter_box(output, scale_range):
     return output[keep]
 
 
-def postprocess(prediction, num_classes, conf_thre=0.7, nms_thre=0.45, class_agnostic=False):
+def postprocess(
+    prediction, num_classes, conf_thre=0.7, nms_thre=0.45, class_agnostic=False
+):
     box_corner = prediction.new(prediction.shape)
     box_corner[:, :, 0] = prediction[:, :, 0] - prediction[:, :, 2] / 2
     box_corner[:, :, 1] = prediction[:, :, 1] - prediction[:, :, 3] / 2
@@ -44,11 +46,17 @@ def postprocess(prediction, num_classes, conf_thre=0.7, nms_thre=0.45, class_agn
         if not image_pred.size(0):
             continue
         # Get score and class with highest confidence
-        class_conf, class_pred = torch.max(image_pred[:, 5: 5 + num_classes], 1, keepdim=True)
+        class_conf, class_pred = torch.max(
+            image_pred[:, 5 : 5 + num_classes], 1, keepdim=True
+        )
 
-        conf_mask = (image_pred[:, 4] * class_conf.squeeze() >= conf_thre).squeeze()
+        conf_mask = (
+            image_pred[:, 4] * class_conf.squeeze() >= conf_thre
+        ).squeeze()
         # Detections ordered as (x1, y1, x2, y2, obj_conf, class_conf, class_pred)
-        detections = torch.cat((image_pred[:, :5], class_conf, class_pred.float()), 1)
+        detections = torch.cat(
+            (image_pred[:, :5], class_conf, class_pred.float()), 1
+        )
         detections = detections[conf_mask]
         if not detections.size(0):
             continue
@@ -132,4 +140,14 @@ def xyxy2cxcywh(bboxes):
     bboxes[:, 3] = bboxes[:, 3] - bboxes[:, 1]
     bboxes[:, 0] = bboxes[:, 0] + bboxes[:, 2] * 0.5
     bboxes[:, 1] = bboxes[:, 1] + bboxes[:, 3] * 0.5
+    return bboxes
+
+
+def cxcywh2xyxy(bboxes):
+    x_center, y_center = bboxes[:, 1], bboxes[:, 2]
+    half_width, half_height = bboxes[:, 3] // 2, bboxes[:, 4] // 2
+    bboxes[:, 1] = x_center - half_width
+    bboxes[:, 2] = y_center - half_height
+    bboxes[:, 3] = x_center + half_width
+    bboxes[:, 4] = y_center + half_height
     return bboxes

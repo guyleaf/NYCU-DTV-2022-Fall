@@ -65,14 +65,14 @@ class Dataset(torchDataset):
     that enables on the fly resizing of the ``input_dim``.
 
     Args:
-        input_dimension (tuple): (width, height) tuple with default dimensions of the network
+        input_dimension (tuple): (height, width) tuple with default dimensions of the network
     """
 
     def __init__(self, input_dimension: tuple[int, int], mosaic: bool = True):
         super().__init__()
         assert (
             len(input_dimension) == 2
-        ), "The format of input_dimension should be (width, height)."
+        ), "The format of input_dimension should be (height, width)."
         self.__input_dim = input_dimension
         self.enable_mosaic = mosaic
 

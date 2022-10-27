@@ -215,9 +215,10 @@ class MosaicDataset(Dataset):
         jit_factor = random.uniform(*self.mixup_scale)
         FLIP = random.uniform(0, 1) > 0.5
         cp_labels = []
-        while len(cp_labels) == 0:
-            cp_index = random.randint(0, self.__len__() - 1)
-            cp_labels = self._dataset.load_anno(cp_index)
+        cp_index = random.randint(0, self.__len__() - 1)
+        # while len(cp_labels) == 0:
+        #     cp_index = random.randint(0, self.__len__() - 1)
+        #     cp_labels = self._dataset.load_anno(cp_index)
         img, cp_labels, _, _ = self._dataset.pull_item(cp_index)
 
         if len(img.shape) == 3:
