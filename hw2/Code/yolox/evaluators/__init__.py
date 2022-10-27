@@ -4,4 +4,4 @@
 
 from .coco_evaluator import COCOEvaluator
 from .voc_evaluator import VOCEvaluator
-from .gta_video_evaluator import GTAVideoEvaluator
+# from .gta_video_evaluator import GTAVideoEvaluator

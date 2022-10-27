@@ -1,54 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 
-import copy
-import os
 from loguru import logger
 
-import torch
-from torch.utils.data import Dataset
-
 import cv2
-from PIL import Image
-
 import numpy as np
-import pandas as pd
-
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 from yolox.data.datasets.gta_video_classes import GTA_CLASSES
+from yolox.data.datasets.wrappers import Dataset
+from yolox.utils.boxes import cxcywh2xyxy
 
-
-DEFAULT_MEAN = (0.485, 0.456, 0.406)
-DEFAULT_STD = (0.229, 0.224, 0.225)
-
-DEFAULT_TRAIN_TRANSFORMS = A.Compose(
-    [
-        A.LongestMaxSize(416),
-        A.Flip(p=0.5),
-        A.Normalize(mean=DEFAULT_MEAN, std=DEFAULT_STD),
-        A.PadIfNeeded(
-            min_height=416, min_width=416, border_mode=cv2.BORDER_CONSTANT
-        ),
-        ToTensorV2(),
-    ],
-    bbox_params=A.BboxParams(
-        format="yolo", min_visibility=0.2, label_fields=["class_labels"]
-    ),
-)
-
-DEFAULT_VAL_TRANSFORMS = A.Compose(
-    [
-        A.LongestMaxSize(416),
-        A.Normalize(mean=DEFAULT_MEAN, std=DEFAULT_STD),
-        A.PadIfNeeded(
-            min_height=416, min_width=416, border_mode=cv2.BORDER_CONSTANT
-        ),
-        ToTensorV2(),
-    ],
-    bbox_params=A.BboxParams(format="yolo", label_fields=["class_labels"]),
-)
+import os
+import pandas as pd
 
 
 class GTAVideoDataset(Dataset):
@@ -70,10 +33,10 @@ class GTAVideoDataset(Dataset):
         self,
         data_dir: str,
         image_set: str = "train",
-        image_size: tuple[int, int] = (1080, 1920),
-        preproc: A.Compose = DEFAULT_TRAIN_TRANSFORMS,
+        image_size: tuple[int, int] = (416, 416),
+        preproc=None,
     ) -> None:
-        super().__init__()
+        super().__init__(image_size)
         self._root = data_dir
         self._img_set = image_set
         self._preproc = preproc
@@ -85,50 +48,69 @@ class GTAVideoDataset(Dataset):
         # load annotations
         anno_folder = os.path.join(data_dir, f"{image_set}_labels")
         self._ids, self._annos = self._load_annotations(anno_folder)
-        logger.info(f"Number of {image_set} images:", len(self._ids))
+        logger.info(f"Number of {image_set} images: {len(self._ids)}")
 
-    def _load_annotations(self, path: str) -> list:
+    def _load_annotations(
+        self, path: str
+    ) -> tuple[list[str], list[np.ndarray]]:
         ids = []
         annos = []
         # load files in order by id
         for filename in os.listdir(path):
             # [class_ind, x_center, y_center, width, height]
-            content = pd.read_csv(os.path.join(path, filename), sep=" ")
+            bboxes = pd.read_csv(
+                os.path.join(path, filename), sep=" "
+            ).to_numpy()
 
-            bboxes = content.iloc[:, 1:].values.tolist()
-            class_inds = content.iloc[:, 0].values.tolist()
+            bboxes = bboxes[:, [1, 2, 3, 4, 0]]
 
             # [x_center, y_center, width, height, class_ind]
-            annos.append([bboxes, class_inds])
+            annos.append(bboxes)
             ids.append(filename.removesuffix(".txt"))
         return ids, annos
 
-    def _load_image(self, index: int) -> np.ndarray:
-        img_id = self._ids[index]
-        img = Image.open(self._img_path % img_id)
-        return np.array(img)
+    def _load_image(self, id: int) -> cv2.Mat:
+        img = cv2.imread(self._img_path % id, flags=cv2.IMREAD_COLOR)
+        return img
+
+    def _convert_to_voc_format(
+        self, anno: np.ndarray, img_info: tuple[int, int]
+    ) -> np.ndarray:
+        anno[:, 0:4:2] *= img_info[1]
+        anno[:, 1:4:2] *= img_info[0]
+        anno = cxcywh2xyxy(anno, img_info)
+        return anno
+
+    def _resize_image_and_annotation(
+        self, img: cv2.Mat, anno: np.ndarray
+    ) -> tuple[cv2.Mat, np.ndarray]:
+        r = min(
+            self._img_size[0] / img.shape[0], self._img_size[1] / img.shape[1]
+        )
+        img = cv2.resize(
+            img,
+            (int(img.shape[1] * r), int(img.shape[0] * r)),
+            interpolation=cv2.INTER_AREA,
+        ).astype(dtype=np.uint8)
+        anno[:, :4] *= r
+        return img, anno
 
     def __len__(self) -> int:
         return len(self._ids)
 
+    @Dataset.mosaic_getitem
     def __getitem__(self, index):
-        img, (bboxes, class_inds), img_info, img_id = self.pull_item(index)
+        img, target, img_info, img_id = self.pull_item(index)
 
         if self._preproc is not None:
-            transformed_data = self._preproc(
-                image=img, bboxes=bboxes, class_labels=class_inds
-            )
-            img = transformed_data["image"]
-            bboxes = transformed_data["bboxes"]
-            class_inds = transformed_data["class_labels"]
+            img, target = self._preproc(img, target, self.input_dim)
 
-        target = [
-            torch.tensor(bboxes, dtype=torch.float32),
-            torch.tensor(class_inds),
-        ]
         return img, target, img_info, img_id
 
-    def pull_item(self, index: int) -> tuple:
+    def load_anno(self, index: int) -> tuple[float, ...]:
+        return self._annos[index][0]
+
+    def pull_item(self, index: int) -> tuple[np.ndarray, list, dict, int]:
         """Returns the original image and target at an index for mixup
 
         Note: not using self.__getitem__(), as any transformations passed in
@@ -139,10 +121,14 @@ class GTAVideoDataset(Dataset):
         Return:
             img, target
         """
-        img = self._load_image(index)
-        target = self._annos[index]
+        img_id = self._ids[index]
+        img = self._load_image(img_id)
+        img_info = tuple(img.shape[:2])
+        anno = self._annos[index]
 
-        return img, target, copy.deepcopy(self._img_size), index
+        anno = self._convert_to_voc_format(anno, img_info)
+        img, anno = self._resize_image_and_annotation(img, anno)
+        return img, anno, img_info, img_id
 
 
 if __name__ == "__main__":
@@ -150,7 +136,8 @@ if __name__ == "__main__":
         "E:\\Git\\NYCU-DTV-2022-Fall\\hw2\\Code\\datasets\\GTA",
         image_set="val",
     )
-    print("Checking data...")
+    logger.info("Checking data...")
     for data in dataset:
-        pass
-    print(len(dataset))
+        print(data)
+        break
+    logger.info(len(dataset))

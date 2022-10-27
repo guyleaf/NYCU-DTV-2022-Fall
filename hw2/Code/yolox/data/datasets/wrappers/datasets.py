@@ -90,6 +90,9 @@ class Dataset(torchDataset):
             return self._input_dim
         return self.__input_dim
 
+    def load_anno(self, index: int) -> tuple[float, ...]:
+        raise NotImplementedError("The method load_anno is not implemented.")
+
     def pull_item(self, index: int) -> tuple:
         raise NotImplementedError("The method pull_item is not implemented.")
 

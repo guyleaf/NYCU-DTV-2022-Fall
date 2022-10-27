@@ -46,8 +46,8 @@ class MosaicDataset(Dataset):
 
     def __init__(
         self,
-        dataset,
-        img_size,
+        dataset: Dataset,
+        img_size: tuple[int, int],
         mosaic=True,
         preproc=None,
         degrees=10.0,
@@ -107,9 +107,14 @@ class MosaicDataset(Dataset):
             indices = [idx] + [
                 random.randint(0, len(self._dataset) - 1) for _ in range(3)
             ]
+            img_id = None
 
             for i_mosaic, index in enumerate(indices):
-                img, _labels, _, img_id = self._dataset.pull_item(index)
+                if i_mosaic == 0:
+                    img, _labels, _, img_id = self._dataset.pull_item(index)
+                else:
+                    img, _labels, _, _ = self._dataset.pull_item(index)
+
                 h0, w0 = img.shape[:2]  # orig hw
                 scale = min(1.0 * input_h / h0, 1.0 * input_w / w0)
                 img = cv2.resize(
@@ -197,7 +202,10 @@ class MosaicDataset(Dataset):
             mix_img, padded_labels = self.preproc(
                 mosaic_img, mosaic_labels, self.input_dim
             )
-            img_info = (mix_img.shape[1], mix_img.shape[0])
+            if mix_img.shape[0] == 3:
+                img_info = tuple(mix_img.shape[1:3])
+            else:
+                img_info = tuple(mix_img.shape[:2])
 
             # -----------------------------------------------------------------
             # img_info and img_id are not used for training.
@@ -215,10 +223,9 @@ class MosaicDataset(Dataset):
         jit_factor = random.uniform(*self.mixup_scale)
         FLIP = random.uniform(0, 1) > 0.5
         cp_labels = []
-        cp_index = random.randint(0, self.__len__() - 1)
-        # while len(cp_labels) == 0:
-        #     cp_index = random.randint(0, self.__len__() - 1)
-        #     cp_labels = self._dataset.load_anno(cp_index)
+        while len(cp_labels) == 0:
+            cp_index = random.randint(0, self.__len__() - 1)
+            cp_labels = self._dataset.load_anno(cp_index)
         img, cp_labels, _, _ = self._dataset.pull_item(cp_index)
 
         if len(img.shape) == 3:
