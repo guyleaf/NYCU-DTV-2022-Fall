@@ -13,7 +13,7 @@ import numpy as np
 
 
 def parse_rec(filename):
-    """ Parse a PASCAL VOC xml file """
+    """Parse a PASCAL VOC xml file"""
     tree = ET.parse(filename)
     objects = []
     for obj in tree.findall("object"):
@@ -92,7 +92,11 @@ def voc_eval(
         for i, imagename in enumerate(imagenames):
             recs[imagename] = parse_rec(annopath.format(imagename))
             if i % 100 == 0:
-                print("Reading annotation for {:d}/{:d}".format(i + 1, len(imagenames)))
+                print(
+                    "Reading annotation for {:d}/{:d}".format(
+                        i + 1, len(imagenames)
+                    )
+                )
         # save
         print("Saving cached annotations to {:s}".format(cachefile))
         with open(cachefile, "wb") as f:
@@ -111,7 +115,11 @@ def voc_eval(
         difficult = np.array([x["difficult"] for x in R]).astype(np.bool)
         det = [False] * len(R)
         npos = npos + sum(~difficult)
-        class_recs[imagename] = {"bbox": bbox, "difficult": difficult, "det": det}
+        class_recs[imagename] = {
+            "bbox": bbox,
+            "difficult": difficult,
+            "det": det,
+        }
 
     # read dets
     detfile = detpath.format(classname)
@@ -155,7 +163,8 @@ def voc_eval(
             # union
             uni = (
                 (bb[2] - bb[0] + 1.0) * (bb[3] - bb[1] + 1.0)
-                + (BBGT[:, 2] - BBGT[:, 0] + 1.0) * (BBGT[:, 3] - BBGT[:, 1] + 1.0)
+                + (BBGT[:, 2] - BBGT[:, 0] + 1.0)
+                * (BBGT[:, 3] - BBGT[:, 1] + 1.0)
                 - inters
             )
 

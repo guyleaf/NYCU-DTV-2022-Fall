@@ -12,13 +12,20 @@ import torch.backends.cudnn as cudnn
 
 from yolox.core import launch
 from yolox.exp import Exp, get_exp
-from yolox.utils import configure_module, configure_nccl, configure_omp, get_num_devices
+from yolox.utils import (
+    configure_module,
+    configure_nccl,
+    configure_omp,
+    get_num_devices,
+)
 
 
 def make_parser():
     parser = argparse.ArgumentParser("YOLOX train parser")
     parser.add_argument("-expn", "--experiment-name", type=str, default=None)
-    parser.add_argument("-n", "--name", type=str, default=None, help="model name")
+    parser.add_argument(
+        "-n", "--name", type=str, default=None, help="model name"
+    )
 
     # distributed
     parser.add_argument(
@@ -30,7 +37,9 @@ def make_parser():
         type=str,
         help="url used to set up distributed training",
     )
-    parser.add_argument("-b", "--batch-size", type=int, default=64, help="batch size")
+    parser.add_argument(
+        "-b", "--batch-size", type=int, default=64, help="batch size"
+    )
     parser.add_argument(
         "-d", "--devices", default=None, type=int, help="device for training"
     )
@@ -44,7 +53,9 @@ def make_parser():
     parser.add_argument(
         "--resume", default=False, action="store_true", help="resume training"
     )
-    parser.add_argument("-c", "--ckpt", default=None, type=str, help="checkpoint file")
+    parser.add_argument(
+        "-c", "--ckpt", default=None, type=str, help="checkpoint file"
+    )
     parser.add_argument(
         "-e",
         "--start_epoch",
@@ -56,7 +67,10 @@ def make_parser():
         "--num_machines", default=1, type=int, help="num of node for training"
     )
     parser.add_argument(
-        "--machine_rank", default=0, type=int, help="node rank for multi-node training"
+        "--machine_rank",
+        default=0,
+        type=int,
+        help="node rank for multi-node training",
     )
     parser.add_argument(
         "--fp16",
@@ -85,7 +99,7 @@ def make_parser():
         "--logger",
         type=str,
         help="Logger to be used for metrics",
-        default="tensorboard"
+        default="tensorboard",
     )
     parser.add_argument(
         "opts",

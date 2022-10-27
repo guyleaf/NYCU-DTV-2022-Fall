@@ -13,7 +13,13 @@ import numpy as np
 
 import torch
 
-from yolox.utils import gather, is_main_process, postprocess, synchronize, time_synchronized
+from yolox.utils import (
+    gather,
+    is_main_process,
+    postprocess,
+    synchronize,
+    time_synchronized,
+)
 
 
 class VOCEvaluator:
@@ -117,9 +123,13 @@ class VOCEvaluator:
                     nms_end = time_synchronized()
                     nms_time += nms_end - infer_end
 
-            data_list.update(self.convert_to_voc_format(outputs, info_imgs, ids))
+            data_list.update(
+                self.convert_to_voc_format(outputs, info_imgs, ids)
+            )
 
-        statistics = torch.cuda.FloatTensor([inference_time, nms_time, n_samples])
+        statistics = torch.cuda.FloatTensor(
+            [inference_time, nms_time, n_samples]
+        )
         if distributed:
             data_list = gather(data_list, dst=0)
             data_list = ChainMap(*data_list)
@@ -143,7 +153,8 @@ class VOCEvaluator:
 
             # preprocessing: resize
             scale = min(
-                self.img_size[0] / float(img_h), self.img_size[1] / float(img_w)
+                self.img_size[0] / float(img_h),
+                self.img_size[1] / float(img_w),
             )
             bboxes /= scale
 
@@ -163,7 +174,9 @@ class VOCEvaluator:
         nms_time = statistics[1].item()
         n_samples = statistics[2].item()
 
-        a_infer_time = 1000 * inference_time / (n_samples * self.dataloader.batch_size)
+        a_infer_time = (
+            1000 * inference_time / (n_samples * self.dataloader.batch_size)
+        )
         a_nms_time = 1000 * nms_time / (n_samples * self.dataloader.batch_size)
 
         time_info = ", ".join(
@@ -179,7 +192,8 @@ class VOCEvaluator:
         info = time_info + "\n"
 
         all_boxes = [
-            [[] for _ in range(self.num_images)] for _ in range(self.num_classes)
+            [[] for _ in range(self.num_images)]
+            for _ in range(self.num_classes)
         ]
         for img_num in range(self.num_images):
             bboxes, cls, scores = data_dict[img_num]

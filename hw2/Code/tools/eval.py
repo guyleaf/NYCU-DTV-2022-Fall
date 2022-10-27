@@ -20,14 +20,16 @@ from yolox.utils import (
     fuse_model,
     get_local_rank,
     get_model_info,
-    setup_logger
+    setup_logger,
 )
 
 
 def make_parser():
     parser = argparse.ArgumentParser("YOLOX Eval")
     parser.add_argument("-expn", "--experiment-name", type=str, default=None)
-    parser.add_argument("-n", "--name", type=str, default=None, help="model name")
+    parser.add_argument(
+        "-n", "--name", type=str, default=None, help="model name"
+    )
 
     # distributed
     parser.add_argument(
@@ -39,7 +41,9 @@ def make_parser():
         type=str,
         help="url used to set up distributed training",
     )
-    parser.add_argument("-b", "--batch-size", type=int, default=64, help="batch size")
+    parser.add_argument(
+        "-b", "--batch-size", type=int, default=64, help="batch size"
+    )
     parser.add_argument(
         "-d", "--devices", default=None, type=int, help="device for training"
     )
@@ -47,7 +51,10 @@ def make_parser():
         "--num_machines", default=1, type=int, help="num of node for training"
     )
     parser.add_argument(
-        "--machine_rank", default=0, type=int, help="node rank for multi-node training"
+        "--machine_rank",
+        default=0,
+        type=int,
+        help="node rank for multi-node training",
     )
     parser.add_argument(
         "-f",
@@ -56,10 +63,16 @@ def make_parser():
         type=str,
         help="please input your experiment description file",
     )
-    parser.add_argument("-c", "--ckpt", default=None, type=str, help="ckpt for eval")
+    parser.add_argument(
+        "-c", "--ckpt", default=None, type=str, help="ckpt for eval"
+    )
     parser.add_argument("--conf", default=None, type=float, help="test conf")
-    parser.add_argument("--nms", default=None, type=float, help="test nms threshold")
-    parser.add_argument("--tsize", default=None, type=int, help="test img size")
+    parser.add_argument(
+        "--nms", default=None, type=float, help="test nms threshold"
+    )
+    parser.add_argument(
+        "--tsize", default=None, type=int, help="test img size"
+    )
     parser.add_argument("--seed", default=None, type=int, help="eval seed")
     parser.add_argument(
         "--fp16",
@@ -135,7 +148,9 @@ def main(exp, args, num_gpu):
     if rank == 0:
         os.makedirs(file_name, exist_ok=True)
 
-    setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
+    setup_logger(
+        file_name, distributed_rank=rank, filename="val_log.txt", mode="a"
+    )
     logger.info("Args: {}".format(args))
 
     if args.conf is not None:
@@ -146,10 +161,14 @@ def main(exp, args, num_gpu):
         exp.test_size = (args.tsize, args.tsize)
 
     model = exp.get_model()
-    logger.info("Model Summary: {}".format(get_model_info(model, exp.test_size)))
+    logger.info(
+        "Model Summary: {}".format(get_model_info(model, exp.test_size))
+    )
     logger.info("Model Structure:\n{}".format(str(model)))
 
-    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test, args.legacy)
+    evaluator = exp.get_evaluator(
+        args.batch_size, is_distributed, args.test, args.legacy
+    )
     evaluator.per_class_AP = True
     evaluator.per_class_AR = True
 
@@ -205,7 +224,9 @@ if __name__ == "__main__":
     if not args.experiment_name:
         args.experiment_name = exp.exp_name
 
-    num_gpu = torch.cuda.device_count() if args.devices is None else args.devices
+    num_gpu = (
+        torch.cuda.device_count() if args.devices is None else args.devices
+    )
     assert num_gpu <= torch.cuda.device_count()
 
     dist_url = "auto" if args.dist_url is None else args.dist_url

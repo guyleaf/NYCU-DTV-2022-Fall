@@ -12,6 +12,13 @@
 * Tqdm: 4.64.1
 * Typed-argument-parser: 1.7.2
 
+## TODO
+* [ ] Implement evaluator
+* [ ] Implement Exp
+* [ ] Modify trainer.py
+* [ ] Refactor metrics visualization
+* [ ] Modify demo.py & move predictor to Exp
+
 ## How to reproduce?
 ### Installation
 #### Windows

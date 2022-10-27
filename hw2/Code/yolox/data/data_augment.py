@@ -19,7 +19,11 @@ from yolox.utils import xyxy2cxcywh
 
 
 def augment_hsv(img, hgain=5, sgain=30, vgain=30):
-    hsv_augs = np.random.uniform(-1, 1, 3) * [hgain, sgain, vgain]  # random gains
+    hsv_augs = np.random.uniform(-1, 1, 3) * [
+        hgain,
+        sgain,
+        vgain,
+    ]  # random gains
     hsv_augs *= np.random.randint(0, 2, 3)  # random selection of h, s, v
     hsv_augs = hsv_augs.astype(np.int16)
     img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.int16)
@@ -28,7 +32,9 @@ def augment_hsv(img, hgain=5, sgain=30, vgain=30):
     img_hsv[..., 1] = np.clip(img_hsv[..., 1] + hsv_augs[1], 0, 255)
     img_hsv[..., 2] = np.clip(img_hsv[..., 2] + hsv_augs[2], 0, 255)
 
-    cv2.cvtColor(img_hsv.astype(img.dtype), cv2.COLOR_HSV2BGR, dst=img)  # no return needed
+    cv2.cvtColor(
+        img_hsv.astype(img.dtype), cv2.COLOR_HSV2BGR, dst=img
+    )  # no return needed
 
 
 def get_aug_params(value, center=0):
@@ -39,7 +45,9 @@ def get_aug_params(value, center=0):
     else:
         raise ValueError(
             "Affine params should be either a sequence containing two values\
-             or single float values. Got {}".format(value)
+             or single float values. Got {}".format(
+                value
+            )
         )
 
 
@@ -70,8 +78,12 @@ def get_affine_matrix(
     M[1] = R[1] + shear_x * R[0]
 
     # Translation
-    translation_x = get_aug_params(translate) * twidth  # x translation (pixels)
-    translation_y = get_aug_params(translate) * theight  # y translation (pixels)
+    translation_x = (
+        get_aug_params(translate) * twidth
+    )  # x translation (pixels)
+    translation_y = (
+        get_aug_params(translate) * theight
+    )  # y translation (pixels)
 
     M[0, 2] = translation_x
     M[1, 2] = translation_y
@@ -96,7 +108,12 @@ def apply_affine_to_bboxes(targets, target_size, M, scale):
     corner_ys = corner_points[:, 1::2]
     new_bboxes = (
         np.concatenate(
-            (corner_xs.min(1), corner_ys.min(1), corner_xs.max(1), corner_ys.max(1))
+            (
+                corner_xs.min(1),
+                corner_ys.min(1),
+                corner_xs.max(1),
+                corner_ys.max(1),
+            )
         )
         .reshape(4, num_gts)
         .T
@@ -120,9 +137,13 @@ def random_affine(
     scales=0.1,
     shear=10,
 ):
-    M, scale = get_affine_matrix(target_size, degrees, translate, scales, shear)
+    M, scale = get_affine_matrix(
+        target_size, degrees, translate, scales, shear
+    )
 
-    img = cv2.warpAffine(img, M, dsize=target_size, borderValue=(114, 114, 114))
+    img = cv2.warpAffine(
+        img, M, dsize=target_size, borderValue=(114, 114, 114)
+    )
 
     # Transform label coordinates
     if len(targets) > 0:
@@ -141,7 +162,9 @@ def _mirror(image, boxes, prob=0.5):
 
 def preproc(img, input_size, swap=(2, 0, 1)):
     if len(img.shape) == 3:
-        padded_img = np.ones((input_size[0], input_size[1], 3), dtype=np.uint8) * 114
+        padded_img = (
+            np.ones((input_size[0], input_size[1], 3), dtype=np.uint8) * 114
+        )
     else:
         padded_img = np.ones(input_size, dtype=np.uint8) * 114
 

@@ -18,10 +18,12 @@ class IOUloss(nn.Module):
         pred = pred.view(-1, 4)
         target = target.view(-1, 4)
         tl = torch.max(
-            (pred[:, :2] - pred[:, 2:] / 2), (target[:, :2] - target[:, 2:] / 2)
+            (pred[:, :2] - pred[:, 2:] / 2),
+            (target[:, :2] - target[:, 2:] / 2),
         )
         br = torch.min(
-            (pred[:, :2] + pred[:, 2:] / 2), (target[:, :2] + target[:, 2:] / 2)
+            (pred[:, :2] + pred[:, 2:] / 2),
+            (target[:, :2] + target[:, 2:] / 2),
         )
 
         area_p = torch.prod(pred[:, 2:], 1)
@@ -33,13 +35,15 @@ class IOUloss(nn.Module):
         iou = (area_i) / (area_u + 1e-16)
 
         if self.loss_type == "iou":
-            loss = 1 - iou ** 2
+            loss = 1 - iou**2
         elif self.loss_type == "giou":
             c_tl = torch.min(
-                (pred[:, :2] - pred[:, 2:] / 2), (target[:, :2] - target[:, 2:] / 2)
+                (pred[:, :2] - pred[:, 2:] / 2),
+                (target[:, :2] - target[:, 2:] / 2),
             )
             c_br = torch.max(
-                (pred[:, :2] + pred[:, 2:] / 2), (target[:, :2] + target[:, 2:] / 2)
+                (pred[:, :2] + pred[:, 2:] / 2),
+                (target[:, :2] + target[:, 2:] / 2),
             )
             area_c = torch.prod(c_br - c_tl, 1)
             giou = iou - (area_c - area_u) / area_c.clamp(1e-16)

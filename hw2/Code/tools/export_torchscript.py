@@ -14,7 +14,10 @@ from yolox.exp import get_exp
 def make_parser():
     parser = argparse.ArgumentParser("YOLOX torchscript deploy")
     parser.add_argument(
-        "--output-name", type=str, default="yolox.torchscript.pt", help="output name of models"
+        "--output-name",
+        type=str,
+        default="yolox.torchscript.pt",
+        help="output name of models",
     )
     parser.add_argument("--batch-size", type=int, default=1, help="batch size")
     parser.add_argument(
@@ -25,8 +28,12 @@ def make_parser():
         help="experiment description file",
     )
     parser.add_argument("-expn", "--experiment-name", type=str, default=None)
-    parser.add_argument("-n", "--name", type=str, default=None, help="model name")
-    parser.add_argument("-c", "--ckpt", default=None, type=str, help="ckpt path")
+    parser.add_argument(
+        "-n", "--name", type=str, default=None, help="model name"
+    )
+    parser.add_argument(
+        "-c", "--ckpt", default=None, type=str, help="ckpt path"
+    )
     parser.add_argument(
         "opts",
         help="Modify config options using the command-line",
@@ -64,11 +71,15 @@ def main():
     model.head.decode_in_inference = False
 
     logger.info("loading checkpoint done.")
-    dummy_input = torch.randn(args.batch_size, 3, exp.test_size[0], exp.test_size[1])
+    dummy_input = torch.randn(
+        args.batch_size, 3, exp.test_size[0], exp.test_size[1]
+    )
 
     mod = torch.jit.trace(model, dummy_input)
     mod.save(args.output_name)
-    logger.info("generated torchscript model named {}".format(args.output_name))
+    logger.info(
+        "generated torchscript model named {}".format(args.output_name)
+    )
 
 
 if __name__ == "__main__":

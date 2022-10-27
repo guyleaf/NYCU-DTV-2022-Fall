@@ -16,7 +16,9 @@ __all__ = [
     "yolov3",
 ]
 
-_CKPT_ROOT_URL = "https://github.com/Megvii-BaseDetection/YOLOX/releases/download"
+_CKPT_ROOT_URL = (
+    "https://github.com/Megvii-BaseDetection/YOLOX/releases/download"
+)
 _CKPT_FULL_PATH = {
     "yolox-nano": f"{_CKPT_ROOT_URL}/0.1.1rc0/yolox_nano.pth",
     "yolox-tiny": f"{_CKPT_ROOT_URL}/0.1.1rc0/yolox_tiny.pth",
@@ -48,7 +50,9 @@ def create_yolox_model(
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
     device = torch.device(device)
 
-    assert name in _CKPT_FULL_PATH, f"user should use one of value in {_CKPT_FULL_PATH.keys()}"
+    assert (
+        name in _CKPT_FULL_PATH
+    ), f"user should use one of value in {_CKPT_FULL_PATH.keys()}"
     exp: Exp = get_exp(exp_name=name)
     exp.num_classes = num_classes
     yolox_model = exp.get_model()

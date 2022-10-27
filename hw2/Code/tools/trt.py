@@ -17,7 +17,9 @@ from yolox.exp import get_exp
 def make_parser():
     parser = argparse.ArgumentParser("YOLOX ncnn deploy")
     parser.add_argument("-expn", "--experiment-name", type=str, default=None)
-    parser.add_argument("-n", "--name", type=str, default=None, help="model name")
+    parser.add_argument(
+        "-n", "--name", type=str, default=None, help="model name"
+    )
 
     parser.add_argument(
         "-f",
@@ -26,11 +28,19 @@ def make_parser():
         type=str,
         help="please input your experiment description file",
     )
-    parser.add_argument("-c", "--ckpt", default=None, type=str, help="ckpt path")
     parser.add_argument(
-        "-w", '--workspace', type=int, default=32, help='max workspace size in detect'
+        "-c", "--ckpt", default=None, type=str, help="ckpt path"
     )
-    parser.add_argument("-b", '--batch', type=int, default=1, help='max batch size in detect')
+    parser.add_argument(
+        "-w",
+        "--workspace",
+        type=int,
+        default=32,
+        help="max workspace size in detect",
+    )
+    parser.add_argument(
+        "-b", "--batch", type=int, default=1, help="max batch size in detect"
+    )
     return parser
 
 
@@ -67,16 +77,22 @@ def main():
         max_workspace_size=(1 << args.workspace),
         max_batch_size=args.batch,
     )
-    torch.save(model_trt.state_dict(), os.path.join(file_name, "model_trt.pth"))
+    torch.save(
+        model_trt.state_dict(), os.path.join(file_name, "model_trt.pth")
+    )
     logger.info("Converted TensorRT model done.")
     engine_file = os.path.join(file_name, "model_trt.engine")
-    engine_file_demo = os.path.join("demo", "TensorRT", "cpp", "model_trt.engine")
+    engine_file_demo = os.path.join(
+        "demo", "TensorRT", "cpp", "model_trt.engine"
+    )
     with open(engine_file, "wb") as f:
         f.write(model_trt.engine.serialize())
 
     shutil.copyfile(engine_file, engine_file_demo)
 
-    logger.info("Converted TensorRT model engine file is saved for C++ inference.")
+    logger.info(
+        "Converted TensorRT model engine file is saved for C++ inference."
+    )
 
 
 if __name__ == "__main__":

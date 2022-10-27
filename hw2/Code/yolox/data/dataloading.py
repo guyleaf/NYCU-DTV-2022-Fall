@@ -69,10 +69,14 @@ class DataLoader(torchDataLoader):
         if batch_sampler is None:
             if sampler is None:
                 if shuffle:
-                    sampler = torch.utils.data.sampler.RandomSampler(self.dataset)
+                    sampler = torch.utils.data.sampler.RandomSampler(
+                        self.dataset
+                    )
                     # sampler = torch.utils.data.DistributedSampler(self.dataset)
                 else:
-                    sampler = torch.utils.data.sampler.SequentialSampler(self.dataset)
+                    sampler = torch.utils.data.sampler.SequentialSampler(
+                        self.dataset
+                    )
             batch_sampler = YoloBatchSampler(
                 sampler,
                 self.batch_size,

@@ -30,7 +30,14 @@ class BaseConv(nn.Module):
     """A Conv2d -> Batchnorm -> silu/leaky relu block"""
 
     def __init__(
-        self, in_channels, out_channels, ksize, stride, groups=1, bias=False, act="silu"
+        self,
+        in_channels,
+        out_channels,
+        ksize,
+        stride,
+        groups=1,
+        bias=False,
+        act="silu",
     ):
         super().__init__()
         # same padding
@@ -90,7 +97,9 @@ class Bottleneck(nn.Module):
         super().__init__()
         hidden_channels = int(out_channels * expansion)
         Conv = DWConv if depthwise else BaseConv
-        self.conv1 = BaseConv(in_channels, hidden_channels, 1, stride=1, act=act)
+        self.conv1 = BaseConv(
+            in_channels, hidden_channels, 1, stride=1, act=act
+        )
         self.conv2 = Conv(hidden_channels, out_channels, 3, stride=1, act=act)
         self.use_add = shortcut and in_channels == out_channels
 
@@ -123,11 +132,17 @@ class SPPBottleneck(nn.Module):
     """Spatial pyramid pooling layer used in YOLOv3-SPP"""
 
     def __init__(
-        self, in_channels, out_channels, kernel_sizes=(5, 9, 13), activation="silu"
+        self,
+        in_channels,
+        out_channels,
+        kernel_sizes=(5, 9, 13),
+        activation="silu",
     ):
         super().__init__()
         hidden_channels = in_channels // 2
-        self.conv1 = BaseConv(in_channels, hidden_channels, 1, stride=1, act=activation)
+        self.conv1 = BaseConv(
+            in_channels, hidden_channels, 1, stride=1, act=activation
+        )
         self.m = nn.ModuleList(
             [
                 nn.MaxPool2d(kernel_size=ks, stride=1, padding=ks // 2)
@@ -135,7 +150,9 @@ class SPPBottleneck(nn.Module):
             ]
         )
         conv2_channels = hidden_channels * (len(kernel_sizes) + 1)
-        self.conv2 = BaseConv(conv2_channels, out_channels, 1, stride=1, act=activation)
+        self.conv2 = BaseConv(
+            conv2_channels, out_channels, 1, stride=1, act=activation
+        )
 
     def forward(self, x):
         x = self.conv1(x)
@@ -166,12 +183,23 @@ class CSPLayer(nn.Module):
         # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         hidden_channels = int(out_channels * expansion)  # hidden channels
-        self.conv1 = BaseConv(in_channels, hidden_channels, 1, stride=1, act=act)
-        self.conv2 = BaseConv(in_channels, hidden_channels, 1, stride=1, act=act)
-        self.conv3 = BaseConv(2 * hidden_channels, out_channels, 1, stride=1, act=act)
+        self.conv1 = BaseConv(
+            in_channels, hidden_channels, 1, stride=1, act=act
+        )
+        self.conv2 = BaseConv(
+            in_channels, hidden_channels, 1, stride=1, act=act
+        )
+        self.conv3 = BaseConv(
+            2 * hidden_channels, out_channels, 1, stride=1, act=act
+        )
         module_list = [
             Bottleneck(
-                hidden_channels, hidden_channels, shortcut, 1.0, depthwise, act=act
+                hidden_channels,
+                hidden_channels,
+                shortcut,
+                1.0,
+                depthwise,
+                act=act,
             )
             for _ in range(n)
         ]
@@ -188,9 +216,13 @@ class CSPLayer(nn.Module):
 class Focus(nn.Module):
     """Focus width and height information into channel space."""
 
-    def __init__(self, in_channels, out_channels, ksize=1, stride=1, act="silu"):
+    def __init__(
+        self, in_channels, out_channels, ksize=1, stride=1, act="silu"
+    ):
         super().__init__()
-        self.conv = BaseConv(in_channels * 4, out_channels, ksize, stride, act=act)
+        self.conv = BaseConv(
+            in_channels * 4, out_channels, ksize, stride, act=act
+        )
 
     def forward(self, x):
         # shape of x (b,c,w,h) -> y(b,4c,w/2,h/2)

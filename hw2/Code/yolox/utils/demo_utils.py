@@ -91,7 +91,12 @@ def multiclass_nms_class_agnostic(boxes, scores, nms_thr, score_thr):
     keep = nms(valid_boxes, valid_scores, nms_thr)
     if keep:
         dets = np.concatenate(
-            [valid_boxes[keep], valid_scores[keep, None], valid_cls_inds[keep, None]], 1
+            [
+                valid_boxes[keep],
+                valid_scores[keep, None],
+                valid_cls_inds[keep, None],
+            ],
+            1,
         )
     return dets
 

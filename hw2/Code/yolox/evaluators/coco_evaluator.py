@@ -23,11 +23,13 @@ from yolox.utils import (
     postprocess,
     synchronize,
     time_synchronized,
-    xyxy2xywh
+    xyxy2xywh,
 )
 
 
-def per_class_AR_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "AR"], colums=6):
+def per_class_AR_table(
+    coco_eval, class_names=COCO_CLASSES, headers=["class", "AR"], colums=6
+):
     per_class_AR = {}
     recalls = coco_eval.eval["recall"]
     # dimension of recalls: [TxKxAxM]
@@ -42,15 +44,23 @@ def per_class_AR_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "A
 
     num_cols = min(colums, len(per_class_AR) * len(headers))
     result_pair = [x for pair in per_class_AR.items() for x in pair]
-    row_pair = itertools.zip_longest(*[result_pair[i::num_cols] for i in range(num_cols)])
+    row_pair = itertools.zip_longest(
+        *[result_pair[i::num_cols] for i in range(num_cols)]
+    )
     table_headers = headers * (num_cols // len(headers))
     table = tabulate(
-        row_pair, tablefmt="pipe", floatfmt=".3f", headers=table_headers, numalign="left",
+        row_pair,
+        tablefmt="pipe",
+        floatfmt=".3f",
+        headers=table_headers,
+        numalign="left",
     )
     return table
 
 
-def per_class_AP_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "AP"], colums=6):
+def per_class_AP_table(
+    coco_eval, class_names=COCO_CLASSES, headers=["class", "AP"], colums=6
+):
     per_class_AP = {}
     precisions = coco_eval.eval["precision"]
     # dimension of precisions: [TxRxKxAxM]
@@ -67,10 +77,16 @@ def per_class_AP_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "A
 
     num_cols = min(colums, len(per_class_AP) * len(headers))
     result_pair = [x for pair in per_class_AP.items() for x in pair]
-    row_pair = itertools.zip_longest(*[result_pair[i::num_cols] for i in range(num_cols)])
+    row_pair = itertools.zip_longest(
+        *[result_pair[i::num_cols] for i in range(num_cols)]
+    )
     table_headers = headers * (num_cols // len(headers))
     table = tabulate(
-        row_pair, tablefmt="pipe", floatfmt=".3f", headers=table_headers, numalign="left",
+        row_pair,
+        tablefmt="pipe",
+        floatfmt=".3f",
+        headers=table_headers,
+        numalign="left",
     )
     return table
 
@@ -184,9 +200,13 @@ class COCOEvaluator:
                     nms_end = time_synchronized()
                     nms_time += nms_end - infer_end
 
-            data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
+            data_list.extend(
+                self.convert_to_coco_format(outputs, info_imgs, ids)
+            )
 
-        statistics = torch.cuda.FloatTensor([inference_time, nms_time, n_samples])
+        statistics = torch.cuda.FloatTensor(
+            [inference_time, nms_time, n_samples]
+        )
         if distributed:
             data_list = gather(data_list, dst=0)
             data_list = list(itertools.chain(*data_list))
@@ -209,7 +229,8 @@ class COCOEvaluator:
 
             # preprocessing: resize
             scale = min(
-                self.img_size[0] / float(img_h), self.img_size[1] / float(img_w)
+                self.img_size[0] / float(img_h),
+                self.img_size[1] / float(img_w),
             )
             bboxes /= scale
             bboxes = xyxy2xywh(bboxes)
@@ -240,7 +261,9 @@ class COCOEvaluator:
         nms_time = statistics[1].item()
         n_samples = statistics[2].item()
 
-        a_infer_time = 1000 * inference_time / (n_samples * self.dataloader.batch_size)
+        a_infer_time = (
+            1000 * inference_time / (n_samples * self.dataloader.batch_size)
+        )
         a_nms_time = 1000 * nms_time / (n_samples * self.dataloader.batch_size)
 
         time_info = ", ".join(
@@ -281,7 +304,9 @@ class COCOEvaluator:
                 cocoEval.summarize()
             info += redirect_string.getvalue()
             cat_ids = list(cocoGt.cats.keys())
-            cat_names = [cocoGt.cats[catId]['name'] for catId in sorted(cat_ids)]
+            cat_names = [
+                cocoGt.cats[catId]["name"] for catId in sorted(cat_ids)
+            ]
             if self.per_class_AP:
                 AP_table = per_class_AP_table(cocoEval, class_names=cat_names)
                 info += "per class AP:\n" + AP_table + "\n"

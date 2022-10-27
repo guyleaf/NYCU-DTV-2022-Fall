@@ -1,12 +1,16 @@
 from loguru import logger
+from tqdm import tqdm
+
+import torch
+from torch.utils.data import DataLoader
 
 import tempfile
-import torch
-
-
 from tabulate import tabulate
-from torch.utils.data import DataLoader
-from tqdm import tqdm
+
+from .pascalvoc_2012.bounding_box import BoundingBox
+from .pascalvoc_2012.bounding_boxes import BoundingBoxes
+from .pascalvoc_2012.evaluator import Evaluator as PascalVOC2012Evaluator
+from .pascalvoc_2012.utils import BBFormat
 
 
 class GTAVideoEvaluator:
@@ -19,7 +23,7 @@ class GTAVideoEvaluator:
         self,
         dataloader: DataLoader,
         conf_threshold: float,
-        nms_threshold: float,
+        iou_threshold: float,
         num_classes: int,
     ):
         """
@@ -27,11 +31,13 @@ class GTAVideoEvaluator:
             dataloader (Dataloader): evaluate dataloader.
             conf_threshold (float): confidence threshold ranging from 0 to 1,
                                     which is defined in the config file.
-            nms_threshold (float): IoU threshold of non-max supression ranging from 0 to 1.
+            iou_threshold (float): IOU threshold ranging from 0 to 1
+                                    which is defined in the config file
+                                    indicates which detections will be considered TP or FP.
         """
         self._dataloader = dataloader
         self._conf_threshold = conf_threshold
-        self._nms_threshold = nms_threshold
+        self._iou_threshold = iou_threshold
         self._num_classes = num_classes
         self._num_images = len(dataloader.dataset)
 
