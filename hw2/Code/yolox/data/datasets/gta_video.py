@@ -5,9 +5,10 @@ from loguru import logger
 
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 from yolox.data.datasets.gta_video_classes import GTA_CLASSES
-from yolox.data.datasets.wrappers import Dataset
+from yolox.data.datasets.wrappers import Dataset, MosaicDataset
 from yolox.utils.boxes import cxcywh2xyxy
 
 import os
@@ -132,12 +133,21 @@ class GTAVideoDataset(Dataset):
 
 
 if __name__ == "__main__":
+    from yolox.data.gta_video_data_augment import TrainTransform
+
     dataset = GTAVideoDataset(
         "E:\\Git\\NYCU-DTV-2022-Fall\\hw2\\Code\\datasets\\GTA",
         image_set="val",
+        preproc=TrainTransform(),
+    )
+    dataset = MosaicDataset(
+        dataset, img_size=(416, 416), preproc=TrainTransform(jitter_prob=0.0)
     )
     logger.info("Checking data...")
     for data in dataset:
-        print(data)
+        img: np.ndarray = data[0].numpy().astype(dtype=np.uint8)
+        img = np.transpose(img, axes=(1, 2, 0))
+        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        plt.show()
         break
     logger.info(len(dataset))

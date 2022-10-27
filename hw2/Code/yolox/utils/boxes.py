@@ -148,8 +148,8 @@ def cxcywh2xyxy(bboxes: np.ndarray, img_size: tuple[int, int]):
     x_center, y_center = bboxes[:, 0], bboxes[:, 1]
     half_bbox_width, half_bbox_height = bboxes[:, 2] / 2, bboxes[:, 3] / 2
 
-    bboxes[:, 0] = np.maximum(0, x_center - half_bbox_width)
-    bboxes[:, 1] = np.maximum(0, y_center - half_bbox_height)
     bboxes[:, 2] = np.minimum(width, x_center + half_bbox_width)
     bboxes[:, 3] = np.minimum(height, y_center + half_bbox_height)
+    bboxes[:, 0] = np.maximum(0, x_center - half_bbox_width)
+    bboxes[:, 1] = np.maximum(0, y_center - half_bbox_height)
     return np.trunc(bboxes)
