@@ -13,7 +13,7 @@
 * Typed-argument-parser: 1.7.2
 
 ## TODO
-* [ ] Implement evaluator
+* [x] Implement evaluator
 * [ ] Implement Exp
 * [ ] Modify trainer.py
 * [ ] Refactor metrics visualization

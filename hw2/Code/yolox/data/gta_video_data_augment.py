@@ -4,12 +4,13 @@ import torch
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+from yolox.utils.boxes import xyxy2cxcywh
 
 
 class TrainTransform:
     def __init__(
         self,  # [height, width]
-        input_size: tuple[int, int] = (416, 416),
+        img_size: tuple[int, int] = (416, 416),
         jitter_prob: float = 0.5,
         flip_prob: float = 0.5,
         jitter_brightness: float = 0.2,
@@ -21,6 +22,9 @@ class TrainTransform:
     ) -> None:
         self._transform = A.Compose(
             [
+                A.LongestMaxSize(
+                    max_size=max(img_size), interpolation=cv2.INTER_AREA
+                ),
                 A.ColorJitter(
                     brightness=jitter_brightness,
                     contrast=jitter_contrast,
@@ -30,8 +34,8 @@ class TrainTransform:
                 ),
                 A.HorizontalFlip(p=flip_prob),
                 A.PadIfNeeded(
-                    min_height=input_size[0],
-                    min_width=input_size[1],
+                    min_height=img_size[0],
+                    min_width=img_size[1],
                     border_mode=cv2.BORDER_CONSTANT,
                     value=padding_value,
                 ),
@@ -54,6 +58,7 @@ class TrainTransform:
         transformed_data = self._transform(image=img, bboxes=target)
         img = transformed_data["image"].float()
         target = np.array(transformed_data["bboxes"], dtype=np.float32)
+        target = xyxy2cxcywh(target)
         target = target[:, [4, 0, 1, 2, 3]]
         return img, target
 
@@ -61,14 +66,17 @@ class TrainTransform:
 class ValTransform:
     def __init__(
         self,  # [height, width]
-        input_size: tuple[int, int] = (416, 416),
+        img_size: tuple[int, int] = (416, 416),
         padding_value: int = 0,
     ) -> None:
         self._transform = A.Compose(
             [
+                A.LongestMaxSize(
+                    max_size=max(img_size), interpolation=cv2.INTER_AREA
+                ),
                 A.PadIfNeeded(
-                    min_height=input_size[0],
-                    min_width=input_size[1],
+                    min_height=img_size[0],
+                    min_width=img_size[1],
                     border_mode=cv2.BORDER_CONSTANT,
                     value=padding_value,
                 ),
@@ -83,5 +91,6 @@ class ValTransform:
         transformed_data = self._transform(image=img, bboxes=target)
         img = transformed_data["image"].float()
         target = np.array(transformed_data["bboxes"], dtype=np.float32)
+        target = xyxy2cxcywh(target)
         target = target[:, [4, 0, 1, 2, 3]]
         return img, target

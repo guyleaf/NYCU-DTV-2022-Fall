@@ -1,5 +1,7 @@
-from BoundingBox import *
-from utils import *
+from .bounding_box import *
+from .utils import *
+
+from __future__ import annotations
 
 
 class BoundingBoxes:
@@ -8,6 +10,9 @@ class BoundingBoxes:
 
     def addBoundingBox(self, bb):
         self._boundingBoxes.append(bb)
+
+    def addBoundingBoxes(self, another: BoundingBoxes):
+        self._boundingBoxes.extend(another._boundingBoxes)
 
     def removeBoundingBox(self, _boundingBox):
         for d in self._boundingBoxes:

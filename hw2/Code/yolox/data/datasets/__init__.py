@@ -6,6 +6,8 @@ from .coco import COCODataset
 from .coco_classes import COCO_CLASSES
 from .voc import VOCDetectionDataset
 from .voc_classes import VOC_CLASSES
+from .gta_video import GTAVideoDataset
+from .gta_video_classes import GTA_CLASSES
 from .wrappers import ConcatDataset, Dataset, MixConcatDataset, MosaicDataset
 
 __all__ = [
@@ -13,6 +15,8 @@ __all__ = [
     "COCO_CLASSES",
     "VOCDetectionDataset",
     "VOC_CLASSES",
+    "GTAVideoDataset",
+    "GTA_CLASSES",
     "ConcatDataset",
     "Dataset",
     "MixConcatDataset",

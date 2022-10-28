@@ -128,7 +128,7 @@ class GTAVideoDataset(Dataset):
         anno = self._annos[index]
 
         anno = self._convert_to_voc_format(anno, img_info)
-        img, anno = self._resize_image_and_annotation(img, anno)
+        # img, anno = self._resize_image_and_annotation(img, anno)
         return img, anno, img_info, img_id
 
 
@@ -141,10 +141,13 @@ if __name__ == "__main__":
         preproc=TrainTransform(),
     )
     dataset = MosaicDataset(
-        dataset, img_size=(416, 416), preproc=TrainTransform(jitter_prob=0.0)
+        dataset, img_size=(416, 416), preproc=TrainTransform(jitter_prob=0.0), mosaic=False
     )
     logger.info("Checking data...")
     for data in dataset:
+        logger.info(data[0].dtype)
+        logger.info(data[1])
+        logger.info(data[3])
         img: np.ndarray = data[0].numpy().astype(dtype=np.uint8)
         img = np.transpose(img, axes=(1, 2, 0))
         plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))

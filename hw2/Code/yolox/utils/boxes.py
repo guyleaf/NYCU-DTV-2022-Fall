@@ -15,6 +15,7 @@ __all__ = [
     "adjust_box_anns",
     "xyxy2xywh",
     "xyxy2cxcywh",
+    "cxcywh2xyxy"
 ]
 
 

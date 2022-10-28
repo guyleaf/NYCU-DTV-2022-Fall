@@ -10,14 +10,13 @@
 
 import os
 import sys
-from collections import Counter
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from BoundingBox import *
-from BoundingBoxes import *
-from utils import *
+from .bounding_box import *
+from .bounding_boxes import *
+from .utils import *
 
 
 class Evaluator:
