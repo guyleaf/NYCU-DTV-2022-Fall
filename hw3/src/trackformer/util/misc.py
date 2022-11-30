@@ -6,11 +6,13 @@ Mostly copy-paste from torchvision references.
 """
 import datetime
 import os
+import pathlib
 import pickle
 import subprocess
 import time
 from argparse import Namespace
 from collections import defaultdict, deque
+from contextlib import ContextDecorator
 from typing import List, Optional
 
 import torch
@@ -667,3 +669,23 @@ def nested_dict_to_device(dictionary, device):
             output[key] = nested_dict_to_device(value, device)
         return output
     return dictionary.to(device)
+
+
+class autopath(ContextDecorator):
+    def __enter__(self):
+        if os.name == "nt":
+            self.backup = pathlib.PosixPath
+            pathlib.PosixPath = pathlib.WindowsPath
+        elif os.name == "posix":
+            self.backup = pathlib.WindowsPath
+            pathlib.WindowsPath = pathlib.PosixPath
+
+        return self
+
+    def __exit__(self, *exc):
+        if os.name == "nt":
+            pathlib.PosixPath = self.backup
+        elif os.name == "posix":
+            pathlib.WindowsPath = self.backup
+
+        return False
