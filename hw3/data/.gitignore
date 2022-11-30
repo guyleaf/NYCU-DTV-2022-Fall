@@ -1,4 +1,7 @@
-*
+*/
 !snakeboard/
 !demo/
 !.gitignore
+
+*.png
+*.jpg
