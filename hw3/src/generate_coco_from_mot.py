@@ -52,6 +52,8 @@ def generate_coco_from_mot(split_name='train', seqs_names=None,
         shutil.rmtree(coco_dir)
 
     os.mkdir(coco_dir)
+    
+    print(coco_dir)
 
     annotations = {}
     annotations['type'] = 'instances'
