@@ -1,22 +1,27 @@
-﻿import os
-from queue import Queue
+import os
 import tkinter
+import tkinter.filedialog as filedialog
+import tkinter.messagebox as messagebox
 import tkinter.ttk as ttk
-from tkinter import NS, NSEW, Tk
-from typing import Any, Dict, Union
+from queue import Queue
+from tkinter import NSEW, Tk
+from typing import Any, Dict, Set, Union
 
 import motmetrics as mm
 import numpy as np
 import sacred
 import torch
 import yaml
-from demo.stream_tracker import StreamTracker
+from PIL import Image, ImageTk
 
+from demo.stream_tracker import StreamTracker
+from demo.utils import SUPPORTED_VIDEO_EXTENSIONS, is_video_file
 from trackformer.datasets.coco import make_coco_transforms
 from trackformer.datasets.transforms import Compose
 from trackformer.models import build_model
 from trackformer.models.tracker import Tracker
 from trackformer.util.misc import autopath, nested_dict_to_namespace
+from trackformer.util.track_utils import plot_single_frame
 
 mm.lap.default_solver = "lap"
 
@@ -127,8 +132,93 @@ class StreamManager:
         return self._count - 1, queue
 
 
+class AppViewModel:
+    def __init__(
+        self,
+        stream_manager: StreamManager,
+        write_images: Union[bool, str],
+        generate_attention_maps: bool,
+    ) -> None:
+        self._stream_manager = stream_manager
+        self._write_images = write_images
+        self._generate_attention_maps = generate_attention_maps
+
+        self._source = None
+        self._buffer: list[dict] = []
+        self._queue = None
+
+        self._frame_index = 0
+        self._is_camera_source = False
+        self._filters = set()
+
+    @property
+    def filters(self) -> Set[int]:
+        return self._filters.copy()
+
+    def _post_process(self, result: dict):
+        image = result["image"]
+        tracks = result["tracks"].copy()
+
+        for track_id in self._filters:
+            if track_id in tracks:
+                del tracks[track_id]
+
+        image = plot_single_frame(
+            tracks, image, self._write_images, self._generate_attention_maps
+        )
+        return image
+
+    def add_track_id_to_filters(self, id: int):
+        self._filters.add(id)
+
+    def remove_track_id_from_filters(self, id: int):
+        self._filters.discard(id)
+
+    def play(self, source: Union[int, str]) -> bool:
+        # TODO: check the source is available?
+        self._is_camera_source = isinstance(source, int)
+        if not self._is_camera_source:
+            if not os.path.isfile(source) or not is_video_file(source):
+                return False
+
+        # TODO: whether we really need to support tracking multiple videos?
+        self._stream_manager.stop_all()
+        del self._queue
+
+        _, self._queue = self._stream_manager.start_tracker(source)
+        self._buffer.clear()
+        return True
+
+    def restart(self):
+        self._frame_index = 0
+
+    def get_frame(self):
+        if not self._queue.empty():
+            self._buffer.append(self._queue.get(block=False))
+
+        count = len(self._buffer)
+        if count == 0:
+            return None
+
+        if self._is_camera_source:
+            # prevent the buffer from OOM, only keep one frame
+            self._buffer = self._buffer[-1:]
+            result = self._buffer[-1]
+        else:
+            if self._frame_index >= count:
+                self._frame_index = count - 1
+
+            result = self._buffer[self._frame_index]
+            self._frame_index += 1
+        return self._post_process(result)
+
+
 class DemoSettings:
-    def __init__(self, content: ttk.Frame) -> None:
+    def __init__(
+        self, content: ttk.Frame, app_view_model: AppViewModel
+    ) -> None:
+        self._app_view_model = app_view_model
+
         self._content = content
         self._content.columnconfigure(0, weight=1)
 
@@ -139,10 +229,25 @@ class DemoSettings:
         sources.rowconfigure((0, 1), minsize=30)
         sources.grid(row=0, column=0, sticky=NSEW)
 
-        self._camera_button = ttk.Button(sources, text="Camera")
+        self._camera_button = ttk.Button(
+            sources, text="Camera", command=self.on_camera_button_clicked
+        )
         self._camera_button.grid(row=0, column=0, sticky=NSEW, pady=(0, 1.5))
-        self._video_button = ttk.Button(sources, text="Video")
+        self._video_button = ttk.Button(
+            sources, text="Video", command=self.on_video_button_clicked
+        )
         self._video_button.grid(row=1, column=0, sticky=NSEW, pady=(1.5, 0))
+
+    def on_camera_button_clicked(self):
+        if not self._app_view_model.play(0):
+            messagebox.showerror("Camera", "Cannot open the camera.")
+
+    def on_video_button_clicked(self):
+        source = filedialog.askopenfilename(
+            filetypes=SUPPORTED_VIDEO_EXTENSIONS
+        )
+        if not self._app_view_model.play(source):
+            messagebox.showerror("Video", "Cannot open the video.")
 
 
 class TrackingVisualizer:
@@ -150,8 +255,10 @@ class TrackingVisualizer:
         self,
         content: ttk.Frame,
         delay: int,
-        stream_manager: StreamManager,
+        app_view_model: AppViewModel,
     ) -> None:
+        self._app_view_model = app_view_model
+
         self._content = content
         self._content.columnconfigure(0, weight=1)
         self._content.rowconfigure(0, weight=1)
@@ -161,12 +268,17 @@ class TrackingVisualizer:
 
         # TODO: make adjustable
         self._delay = delay
-        self._stream_manager = stream_manager
-
-    def set_data_source(self):
-        pass
+        self.update()
 
     def update(self) -> None:
+        frame = self._app_view_model.get_frame()
+        if frame is not None:
+            frame = Image.fromarray(frame)
+            frame = ImageTk.PhotoImage(frame)
+            self._canvas.delete("frame")
+            self._canvas.create_image(
+                0, 0, image=frame, anchor=NSEW, tags=("frame")
+            )
         self._canvas.after(self._delay, self.update)
 
 
@@ -174,9 +286,9 @@ class App:
     def __init__(
         self,
         window: Tk,
+        app_view_model: AppViewModel,
         title: str = "MOT Demo",
         delay: int = 1000 // 30,
-        stream_manager: StreamManager = None,
     ) -> None:
         self._window = window
         self._window.geometry("1000x600")
@@ -198,12 +310,11 @@ class App:
         bar.grid(row=0, column=0, sticky=NSEW)
         self._content.grid(row=0, column=0, sticky=NSEW)
 
-        self._bar = DemoSettings(bar)
+        self._bar = DemoSettings(bar, app_view_model)
 
-        if stream_manager is not None:
-            self._visualizer = TrackingVisualizer(
-                visualizer, delay, stream_manager
-            )
+        self._visualizer = TrackingVisualizer(
+            visualizer, delay, app_view_model
+        )
 
     def start(self) -> None:
         self._window.mainloop()
@@ -222,6 +333,7 @@ def main(
     tracker_cfg: Dict[str, Any],
     interpolate: bool,
     verbose: bool,
+    write_images: Union[bool, str],
     generate_attention_maps: bool,
     _log,
 ):
@@ -232,9 +344,13 @@ def main(
         interpolate,
         verbose,
         generate_attention_maps,
+        _log,
+    )
+    app_view_model = AppViewModel(
+        stream_manager, write_images, generate_attention_maps
     )
     print("tkinter version:", tkinter.TkVersion)
 
     root = Tk()
-    app = App(root, stream_manager=stream_manager)
+    app = App(root, app_view_model)
     app.start()

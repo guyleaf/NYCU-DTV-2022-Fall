@@ -1,4 +1,4 @@
-﻿# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import threading
 import time
 from queue import Queue
@@ -65,17 +65,16 @@ class StreamTracker(threading.Thread):
 
             with torch.no_grad():
                 frame_data = self._preprocess(image)
-                self._tracker.step(frame_data)
-
-            results = self._tracker.get_results()
+                tracks = self._tracker.step(frame_data)
 
             time_total = time.time() - start
 
             self._log.info(f"NUM ReIDs: {self._tracker.num_reids}")
             self._log.info(f"RUNTIME: {time.time() - start :.2f} s")
 
-            if self._interpolate:
-                results = interpolate_tracks(results)
+            # TODO: support interpolating per frame
+            # if self._interpolate:
+            #     tracks = interpolate_tracks(tracks)
 
             self._log.info(f"RUNTIME SINGLE FRAME: {time_total:.2f} s")
-            self._result_queue.put_nowait(results)
+            self._result_queue.put_nowait(dict(image=image, tracks=tracks))

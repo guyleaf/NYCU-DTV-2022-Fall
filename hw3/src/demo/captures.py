@@ -1,4 +1,4 @@
-﻿from math import trunc
+from math import trunc
 from typing import Optional, Union
 
 import cv2
@@ -12,11 +12,6 @@ class VideoCapture:
 
         self._width = trunc(self._source.get(cv2.CAP_PROP_FRAME_WIDTH))
         self._height = trunc(self._source.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self._length = trunc(self._source.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    @property
-    def length(self) -> int:
-        return self._length
 
     @property
     def width(self) -> int:
