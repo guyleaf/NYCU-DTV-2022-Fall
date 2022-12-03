@@ -9,7 +9,7 @@ $model = "models/$suffix/checkpoint_epoch_50.pth"
 
 $baseOutputDir = "F:/NYCU/DTV/hw3"
 
-for ($i = 5; $i -le 50; $i += 5) {
+for ($i = 5; $i -le 5; $i += 5) {
     $fileName = "demo_reid_${suffix}_${i}" 
     $outputDir = "$baseOutputDir/$fileName"
 

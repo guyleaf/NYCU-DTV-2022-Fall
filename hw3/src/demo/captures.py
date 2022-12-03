@@ -6,23 +6,18 @@ import cv2
 
 class VideoCapture:
     def __init__(self, source: Union[int, str]) -> None:
-        self._source = cv2.VideoCapture(source)
+        if isinstance(source, int):
+            self._source = cv2.VideoCapture(source, cv2.CAP_DSHOW)
+            self._source.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
+            self._source.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+            self._source.set(cv2.CAP_PROP_FPS, 30)
+        else:
+            self._source = cv2.VideoCapture(source)
+
         if not self._source.isOpened():
-            raise ValueError("Unable to open video source")
+            raise ValueError("Unable to open the video source")
 
-        self._width = trunc(self._source.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self._height = trunc(self._source.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    @property
-    def width(self) -> int:
-        return self._width
-
-    @property
-    def height(self) -> int:
-        return self._height
-
-    def reset(self) -> bool:
-        return self._source.set(cv2.CAP_PROP_POS_AVI_RATIO, 0)
+        # self._source.set(cv2.CAP_PROP_BUFFERSIZE, 2)
 
     def get_frame(self) -> Optional[cv2.Mat]:
         ret, frame = self._source.read()

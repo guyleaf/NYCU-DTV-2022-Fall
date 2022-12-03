@@ -4,9 +4,8 @@
 
 import io
 import os
-from collections import defaultdict
 from os import path as osp
-from typing import Optional, Union
+from typing import Union
 
 import cv2
 import matplotlib
@@ -18,6 +17,7 @@ import torchvision.transforms.functional as F
 import tqdm
 from cycler import cycler as cy
 from matplotlib import colors
+from PIL import Image
 from scipy.interpolate import interp1d
 
 matplotlib.use("Agg")
@@ -303,7 +303,8 @@ def plot_single_frame(
     tracks: dict,
     image: cv2.Mat,
     write_image: Union[bool, str],
-    generate_attention_maps: bool = False,
+    cmap,
+    generate_attention_maps: bool = False
 ):
     """Plots a whole sequence
 
@@ -316,12 +317,6 @@ def plot_single_frame(
     # styles = defaultdict(lambda: next(loop_cy_iter))
 
     # cmap = plt.cm.get_cmap('hsv', )
-    mx = 0
-    for track_id, track_data in tracks.items():
-        mx = max(mx, track_id)
-    cmap = rand_cmap(
-        mx, type="bright", first_color_black=False, last_color_black=False
-    )
 
     height, width, _ = image.shape
 
@@ -410,9 +405,9 @@ def plot_single_frame(
     # plt.tight_layout()
     plt.draw()
     with io.BytesIO() as image_buffer:
-        plt.savefig(image_buffer, format="png", dpi=96)
-        image = cv2.imdecode(image_buffer, cv2.IMREAD_COLOR)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        plt.savefig(image_buffer, format="jpg", dpi=96)
+        image = Image.open(image_buffer)
+        image = np.array(image)
     plt.close()
     return image
 

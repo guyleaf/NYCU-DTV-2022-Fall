@@ -641,9 +641,9 @@ class Tracker:
 
         results = {}
         for track in self.tracks:
+            results[track.id] = {}
             if track.id not in self.results:
-                results[track.id] = {}
-                # self.results[track.id] = {}
+                self.results[track.id] = {}
 
             # self.results[track.id][self.frame_index] = {}
 
@@ -671,7 +671,7 @@ class Tracker:
                 # self.results[track.id][self.frame_index]['attention_map'] = \
                 #     track.attention_map.cpu().numpy()
 
-            self.results[track.id] = results[track.id]
+            self.results[track.id][self.frame_index] = results[track.id]
 
         for t in self.inactive_tracks:
             t.count_inactive += 1
