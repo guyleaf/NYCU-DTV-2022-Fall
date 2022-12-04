@@ -12,7 +12,7 @@ from trackformer.datasets.transforms import Compose
 from trackformer.models.tracker import Tracker
 from trackformer.util.track_utils import plot_single_frame, rand_cmap
 
-from .captures import VideoCapture
+from .captures import BaseCapture
 
 
 class StreamTrackerManager:
@@ -29,9 +29,6 @@ class StreamTrackerManager:
         self._tracker = tracker
         self._stream_tracker = None
 
-    def __del__(self):
-        self.stop_tracker()
-
     def stop_tracker(self):
         if self._stream_tracker is not None:
             self._log.info("Stopping the tracker...")
@@ -40,17 +37,17 @@ class StreamTrackerManager:
             del self._stream_tracker
             self._stream_tracker = None
 
-    def start_tracker(self, data_source: Union[int, str], output_queue: Queue):
+    def start_tracker(self, capture: BaseCapture, output_queue: Queue):
         self._log.info("Starting a tracker...")
         self._stream_tracker = StreamTracker(
             self._tracker,
-            data_source,
+            capture,
             self._transform,
             output_queue,
             self._interpolate,
             self._log,
         )
-        self._stream_tracker.setDaemon(True)
+        self._stream_tracker.daemon = True
         self._stream_tracker.start()
 
 
@@ -58,7 +55,7 @@ class StreamTracker(threading.Thread):
     def __init__(
         self,
         tracker: Tracker,
-        cap: VideoCapture,
+        capture: BaseCapture,
         data_transform: Compose,
         output_queue: Queue,
         interpolate: bool,
@@ -70,7 +67,7 @@ class StreamTracker(threading.Thread):
         self._output_queue = output_queue
         self._interpolate = interpolate
         self._log = log
-        self._cap = cap
+        self._capture = capture
         self._data_transform = data_transform
         self._tracker = tracker
 
@@ -89,28 +86,31 @@ class StreamTracker(threading.Thread):
             dets=torch.tensor([[]]),
             orig_size=torch.as_tensor([[height_orig, width_orig]]),
             size=torch.as_tensor([[int(height), int(width)]]),
-        )
+        ), (height_orig, width_orig)
 
     def stop(self):
         self._stop_event.set()
 
     def run(self) -> None:
         self._tracker.reset()
+        self._capture.start()
 
-        # FIXME: bad pattern to stop the thread, need to be rewritten
-        while not self._stop_event.is_set():
-            image = self._cap.read()
-            if image is None:
-                break
+        while not self._stop_event.is_set() and self._capture.running():
+            image = self._capture.read()
 
             # self._log.info("Tracking...")
-            frame_data = self._preprocess(image)
+            frame_data, orig_size = self._preprocess(image)
             with torch.no_grad():
-                tracks = self._tracker.step(frame_data)
+                tracks = self._tracker.step(
+                    frame_data, clear_prev_results=True
+                )
 
             self._output_queue.put(
-                dict(image=image, tracks=tracks), timeout=30
+                dict(image=image, tracks=tracks, orig_size=orig_size),
+                timeout=30,
             )
+
+        self._capture.stop()
 
 
 class StreamOutputPipeline(threading.Thread):
@@ -136,12 +136,12 @@ class StreamOutputPipeline(threading.Thread):
             last_color_black=False,
         )
 
+        self._stop_event = threading.Event()
         self._input_queue = Queue(maxsize=input_queue_size)
         self._output_queue = Queue(maxsize=output_queue_size)
         self._input_filters = Queue()
         self._filters = []
         self._log.info("Initilized StreamOutputPipeline.")
-        # self._buffers = []
 
     @property
     def input_filters(self) -> Queue:
@@ -163,32 +163,32 @@ class StreamOutputPipeline(threading.Thread):
             if track_id in tracks:
                 del tracks[track_id]
 
-        image = plot_single_frame(
+        result["image"] = plot_single_frame(
             tracks,
             image,
             self._write_images,
             self._cmap,
             self._generate_attention_maps,
         )
-        return image
+        return result
+
+    def stop(self):
+        self._stop_event.set()
 
     def run(self) -> None:
-        while True:
+        while not self._stop_event.is_set():
             if not self._input_filters.empty():
                 self._filters = self._input_filters.get_nowait()
+                self._log.info(self._filters)
                 self._input_filters.task_done()
 
             if self._input_queue.empty():
+                time.sleep(0.1)
                 continue
 
             result = self._input_queue.get_nowait()
             self._input_queue.task_done()
 
-            frame = self._post_process(result)
-            # self._buffers.append(frame)
+            result = self._post_process(result)
 
-            # if full, skip it
-            if self._output_queue.full():
-                time.sleep(0.1)
-            else:
-                self._output_queue.put_nowait(frame)
+            self._output_queue.put(result, timeout=30)

@@ -1,13 +1,14 @@
 import os
 import sys
+import threading
 import tkinter
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 import tkinter.ttk as ttk
 import traceback
-from tkinter import CENTER, NSEW, Tk
+from tkinter import CENTER, SE, SW, NSEW, Tk
 from types import TracebackType
-from typing import Any, Dict, Set, Union
+from typing import Any, Dict, Union
 
 import motmetrics as mm
 import numpy as np
@@ -15,9 +16,15 @@ import sacred
 import torch
 import yaml
 from PIL import Image, ImageTk
+from demo.captures import VideoCapture, WebCamCapture
 
 from demo.stream_tracker import StreamOutputPipeline, StreamTrackerManager
-from demo.utils import SUPPORTED_VIDEO_EXTENSIONS, is_video_file
+from demo.utils import (
+    SUPPORTED_VIDEO_EXTENSIONS,
+    cv2_video_transform,
+    cv2_webcam_transform,
+    get_track_id_by_xy,
+)
 from trackformer.datasets.coco import make_coco_transforms
 from trackformer.datasets.transforms import Compose
 from trackformer.models import build_model
@@ -32,58 +39,73 @@ class AppViewModel:
         self,
         stream_tracker_manager: StreamTrackerManager,
         stream_output_pipeline: StreamOutputPipeline,
-        upper_buffer_count: int = 60,
-        lower_buffer_count: int = 30
     ) -> None:
         self._stream_tracker_manager = stream_tracker_manager
         self._stream_output_pipeline = stream_output_pipeline
-        self._upper_buffer_count = upper_buffer_count
-        self._lower_buffer_count = lower_buffer_count
 
         self._source = None
         self._buffer: list[dict] = []
 
         self._frame_index = 0
         self._is_camera_source = False
-        self._is_buffered = False
         self._filters = set()
 
-    @property
-    def filters(self) -> Set[int]:
-        return self._filters.copy()
+    def _update_filters(self, tracks: dict, x: int, y: int) -> None:
+        track_id = get_track_id_by_xy(tracks, x, y)
+        if track_id is None:
+            return
 
-    def add_track_id_to_filters(self, id: int):
-        self._filters.add(id)
+        if track_id in self._filters:
+            self._filters.discard(track_id)
+        else:
+            self._filters.add(track_id)
+        self._stream_output_pipeline.input_filters.put(self._filters.copy())
 
-    def remove_track_id_from_filters(self, id: int):
-        self._filters.discard(id)
+    def update_filters(self, x: int, y: int, image_size: "tuple[int, int]"):
+        if self._is_camera_source:
+            tracks = self._buffer[-1]["tracks"]
+            orig_size = self._buffer[-1]["orig_size"]
+        else:
+            tracks = self._buffer[self._frame_index - 1]["tracks"]
+            orig_size = self._buffer[self._frame_index - 1]["orig_size"]
+
+        # convert x, y into original image space
+        x = int(x * (orig_size[1] / image_size[1]))
+        y = int(y * (orig_size[0] / image_size[0]))
+
+        threading.Thread(
+            target=self._update_filters,
+            args=(tracks, x, y),
+        ).start()
 
     def play(self, source: Union[int, str]) -> bool:
-        # TODO: check the source is available?
         self._is_camera_source = isinstance(source, int)
-        if not self._is_camera_source:
-            if not os.path.isfile(source) or not is_video_file(source):
-                return False
+        try:
+            if self._is_camera_source:
+                capture = WebCamCapture(source, transform=cv2_webcam_transform)
+            else:
+                capture = VideoCapture(source, transform=cv2_video_transform)
+        except BaseException:
+            return False
 
         self._stream_tracker_manager.stop_tracker()
         self._stream_tracker_manager.start_tracker(
-            source, self._stream_output_pipeline.input_queue
+            capture, self._stream_output_pipeline.input_queue
         )
-        self._buffer.clear()
+        self._buffer = []
+        self._filters = set()
         self._frame_index = 0
+        self._stream_output_pipeline.input_filters.put_nowait(set())
         return True
 
     def restart(self):
         self._frame_index = 0
 
-    def retrieve_output_pipeline(self):
+    def get_frame(self):
         queue = self._stream_output_pipeline.output_queue
         if not queue.empty():
             self._buffer.append(queue.get_nowait())
             queue.task_done()
-
-    def get_frame(self):
-        self.retrieve_output_pipeline()
 
         count = len(self._buffer)
         if count == 0:
@@ -93,19 +115,11 @@ class AppViewModel:
             frame = self._buffer[-1]
             # prevent the buffer from OOM, only keep one frame
             self._buffer = [frame]
+            frame = frame["image"]
         else:
-            diff = count - self._frame_index
-            if diff >= self._upper_buffer_count:
-                self._is_buffered = True
-            elif diff < self._lower_buffer_count:
-                self._is_buffered = False
-
             self._frame_index = min(self._frame_index, count - 1)
-            frame = self._buffer[self._frame_index]
-
-            if self._is_buffered:
-                self._frame_index += 1
-            # print(diff)
+            frame = self._buffer[self._frame_index]["image"]
+            self._frame_index += 1
         return frame
 
 
@@ -114,25 +128,41 @@ class DemoSettings:
         self, content: ttk.Frame, app_view_model: AppViewModel
     ) -> None:
         self._app_view_model = app_view_model
-
         self._content = content
-        self._content.columnconfigure(0, weight=1)
 
         sources = ttk.Labelframe(
             self._content, text="Sources", padding=(5, 0, 5, 5)
         )
-        sources.columnconfigure(0, weight=1)
-        sources.rowconfigure((0, 1), minsize=30)
-        sources.grid(row=0, column=0, sticky=NSEW)
 
         self._camera_button = ttk.Button(
             sources, text="Camera", command=self.on_camera_button_clicked
         )
-        self._camera_button.grid(row=0, column=0, sticky=NSEW, pady=(0, 1.5))
+        self._camera_button.grid(row=0, column=0, sticky=NSEW, padx=(0, 1.5))
         self._video_button = ttk.Button(
             sources, text="Video", command=self.on_video_button_clicked
         )
-        self._video_button.grid(row=1, column=0, sticky=NSEW, pady=(1.5, 0))
+        self._video_button.grid(row=0, column=1, sticky=NSEW, padx=(1.5, 0))
+
+        sources.columnconfigure(list(range(sources.grid_size()[0])), weight=1)
+        sources.rowconfigure(list(range(sources.grid_size()[1])), minsize=30)
+        sources.grid(row=0, column=0, sticky=NSEW)
+
+        controls = ttk.Labelframe(
+            self._content, text="Controls", padding=(5, 0, 5, 5)
+        )
+
+        self._video_restart_button = ttk.Button(
+            controls, text="Restart", command=self._app_view_model.restart
+        )
+        self._video_restart_button.grid(row=0, column=0, sticky="nse")
+
+        controls.columnconfigure(
+            list(range(controls.grid_size()[0])), weight=1
+        )
+        controls.rowconfigure(list(range(controls.grid_size()[1])), minsize=30)
+        controls.grid(row=1, column=0, sticky=NSEW)
+
+        self._content.columnconfigure(0, weight=1)
 
     def on_camera_button_clicked(self):
         if not self._app_view_model.play(0):
@@ -151,7 +181,6 @@ class TrackingVisualizer:
     def __init__(
         self,
         content: ttk.Frame,
-        delay: int,
         app_view_model: AppViewModel,
     ) -> None:
         self._app_view_model = app_view_model
@@ -162,38 +191,46 @@ class TrackingVisualizer:
 
         self._canvas = tkinter.Canvas(content, background="gray50")
         self._image_container = self._canvas.create_image(0, 0, anchor=CENTER)
+        self._canvas.tag_bind(
+            self._image_container, "<Button-1>", self.click_image
+        )
         self._canvas.grid(row=0, column=0, sticky=NSEW)
 
         # TODO: make adjustable
-        self._delay = delay
-        self._image = None
+        self._delay = 1000 // 30
         self.update()
+
+    def click_image(self, event: tkinter.Event) -> None:
+        image_size = (self._image.height(), self._image.width())
+        x = event.x
+        y = event.y - (self._canvas_height - image_size[0]) // 2
+        self._app_view_model.update_filters(x, y, image_size)
 
     def update(self) -> None:
         frame = self._app_view_model.get_frame()
         if frame is not None:
-            canvas_width = self._canvas.winfo_width()
-            canvas_height = self._canvas.winfo_height()
+            self._canvas_width = self._canvas.winfo_width()
+            self._canvas_height = self._canvas.winfo_height()
 
             frame = Image.fromarray(frame)
-            frame.thumbnail(size=(canvas_width, canvas_height))
+            frame.thumbnail(size=(self._canvas_width, self._canvas_height))
             self._image = ImageTk.PhotoImage(frame)
             self._canvas.itemconfigure(
                 self._image_container, image=self._image
             )
             self._canvas.coords(
-                self._image_container, canvas_width // 2, canvas_height // 2
+                self._image_container,
+                self._canvas_width // 2,
+                self._canvas_height // 2,
             )
+        else:
+            self._canvas.itemconfigure(self._image_container, image=None)
         self._canvas.after(self._delay, self.update)
 
 
 class App:
     def __init__(
-        self,
-        window: Tk,
-        app_view_model: AppViewModel,
-        title: str = "MOT Demo",
-        delay: int = 1000 // 30,
+        self, window: Tk, app_view_model: AppViewModel, title: str = "MOT Demo"
     ) -> None:
         self._window = window
         self._window.geometry("1000x600")
@@ -201,7 +238,7 @@ class App:
         self._window.columnconfigure(0, weight=1)
         self._window.rowconfigure(0, weight=1)
 
-        self._content = ttk.Frame(self._window, padding=(3, 3, 3, 3))
+        self._content = ttk.Frame(self._window)
         self._content.columnconfigure(0, weight=1)
         self._content.columnconfigure(2, weight=2)
         self._content.rowconfigure(0, weight=1)
@@ -216,10 +253,10 @@ class App:
         self._content.grid(row=0, column=0, sticky=NSEW)
 
         self._bar = DemoSettings(bar, app_view_model)
+        self._visualizer = TrackingVisualizer(visualizer, app_view_model)
 
-        self._visualizer = TrackingVisualizer(
-            visualizer, delay, app_view_model
-        )
+        for child in self._content.winfo_children():
+            child.grid_configure(padx=5, pady=5)
 
     def start(self) -> None:
         self._window.mainloop()
@@ -238,7 +275,7 @@ def excepthook(
             + "\nTerminating."
         )
         messagebox.showerror("Error!", msg)
-    sys.exit()
+    sys.exit(1)
 
 
 sys.excepthook = excepthook
@@ -344,5 +381,5 @@ def main(
     print("tkinter version:", tkinter.TkVersion)
     root = Tk()
     root.report_callback_exception = excepthook
-    app = App(root, app_view_model, delay=1000 // 30)
+    app = App(root, app_view_model)
     app.start()

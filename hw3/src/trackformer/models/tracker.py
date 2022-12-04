@@ -96,6 +96,9 @@ class Tracker:
             self.frame_index = 0
             self.num_reids = 0
 
+        # Release the GPU memory manually.
+        torch.cuda.empty_cache()
+
     @property
     def device(self):
         return next(self.obj_detector.parameters()).device
@@ -339,7 +342,7 @@ class Tracker:
 
         return reid_mask
 
-    def step(self, blob):
+    def step(self, blob, clear_prev_results=False):
         """This function should be called every timestep to perform tracking with a blob
         containing the image information.
         """
@@ -640,6 +643,9 @@ class Tracker:
                 track.mask = track_masks[i]
 
         results = {}
+        # avoid OOM when used in live object tracking
+        if clear_prev_results:
+            self.results = {}
         for track in self.tracks:
             results[track.id] = {}
             if track.id not in self.results:
