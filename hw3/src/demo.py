@@ -202,7 +202,7 @@ class TrackingVisualizer:
 
     def click_image(self, event: tkinter.Event) -> None:
         image_size = (self._image.height(), self._image.width())
-        x = event.x
+        x = event.x - (self._canvas_width - image_size[1]) // 2
         y = event.y - (self._canvas_height - image_size[0]) // 2
         self._app_view_model.update_filters(x, y, image_size)
 
