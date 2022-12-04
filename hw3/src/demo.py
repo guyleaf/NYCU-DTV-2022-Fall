@@ -6,7 +6,8 @@ import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 import tkinter.ttk as ttk
 import traceback
-from tkinter import CENTER, SE, SW, NSEW, Tk
+import yappi
+from tkinter import CENTER, NSEW, Tk
 from types import TracebackType
 from typing import Any, Dict, Union
 
@@ -364,6 +365,9 @@ def main(
     # Initialize GUI and others #
     #############################
 
+    print("Clock type:", yappi.get_clock_type())
+    yappi.start()
+
     stream_manager = StreamTrackerManager(
         tracker,
         transform,
@@ -383,3 +387,22 @@ def main(
     root.report_callback_exception = excepthook
     app = App(root, app_view_model)
     app.start()
+
+    stream_manager.stop_tracker()
+    stream_output_pipeline.stop()
+    stream_output_pipeline.join()
+
+    yappi.stop()
+    threads = yappi.get_thread_stats()
+    with open("debug.log", "w") as f:
+        for thread in threads:
+            if thread.name in [
+                "StreamOutputPipeline",
+                "StreamTracker",
+                "_MainThread",
+            ]:
+                print(
+                    "Function stats for (%s) (%d)" % (thread.name, thread.id),
+                    file=f,
+                )  # it is the Thread.__class__.__name__
+                yappi.get_func_stats(ctx_id=thread.id).print_all(out=f)

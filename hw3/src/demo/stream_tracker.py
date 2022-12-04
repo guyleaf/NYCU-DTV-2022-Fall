@@ -91,6 +91,7 @@ class StreamTracker(threading.Thread):
     def stop(self):
         self._stop_event.set()
 
+    @torch.no_grad()
     def run(self) -> None:
         self._tracker.reset()
         self._capture.start()
@@ -100,10 +101,7 @@ class StreamTracker(threading.Thread):
 
             # self._log.info("Tracking...")
             frame_data, orig_size = self._preprocess(image)
-            with torch.no_grad():
-                tracks = self._tracker.step(
-                    frame_data, clear_prev_results=True
-                )
+            tracks = self._tracker.step(frame_data, clear_prev_results=True)
 
             self._output_queue.put(
                 dict(image=image, tracks=tracks, orig_size=orig_size),

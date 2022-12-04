@@ -304,72 +304,62 @@ def plot_single_frame(
     image: cv2.Mat,
     write_image: Union[bool, str],
     cmap,
-    generate_attention_maps: bool = False
+    generate_attention_maps: bool = False,
 ):
-    """Plots a whole sequence
+    """Plots a single frame
 
     Args:
         tracks (dict): The dictionary containing the track dictionaries in the form tracks[track_id] = bb
     """
-    # infinite color loop
-    # cyl = cy('ec', COLORS)
-    # loop_cy_iter = cyl()
-    # styles = defaultdict(lambda: next(loop_cy_iter))
-
-    # cmap = plt.cm.get_cmap('hsv', )
-
     height, width, _ = image.shape
-
-    fig = plt.figure()
-    fig.set_size_inches(width / 96, height / 96)
-    ax = plt.Axes(fig, [0.0, 0.0, 1.0, 1.0])
-    ax.set_axis_off()
-    fig.add_axes(ax)
-    ax.imshow(image)
 
     if generate_attention_maps:
         attention_map_img = np.zeros((height, width, 4))
 
     for track_id, track_data in tracks.items():
-        bbox = track_data["bbox"]
+        # cmap returns int but cv2 cannot identify it
+        track_color = [int(value) for value in cmap(track_id, bytes=True)]
+        annotate_color = track_color
+        x1, y1, x2, y2 = np.round(track_data["bbox"]).astype(int)
 
         if "mask" in track_data:
             mask = track_data["mask"]
-            mask = np.ma.masked_where(mask == 0.0, mask)
+            mask[mask != 0.0] = annotate_color
 
-            ax.imshow(
-                mask,
-                alpha=0.5,
-                cmap=colors.ListedColormap([cmap(track_id)]),
-            )
+            cv2.addWeighted(image, 1.0, mask, 0.5, 0)
 
-            annotate_color = "white"
+            annotate_color = (255, 255, 255)
         else:
-            ax.add_patch(
-                plt.Rectangle(
-                    (bbox[0], bbox[1]),
-                    bbox[2] - bbox[0],
-                    bbox[3] - bbox[1],
-                    fill=False,
-                    linewidth=2.0,
-                    color=cmap(track_id),
-                )
+            cv2.rectangle(
+                image, (x1, y1), (x2, y2), annotate_color, thickness=2
             )
 
-            annotate_color = cmap(track_id)
+        if write_image:
+            if write_image == "debug":
+                text = f"{track_id} - obj: {track_data['obj_ind']}, score: {track_data['score']:.2f}"
+            else:
+                text = f"{track_id} - score: {track_data['score']:.2f}"
 
-        if write_image == "debug":
-            ax.annotate(
-                f"{track_id} - {track_data['obj_ind']} ({track_data['score']:.2f})",
-                (
-                    bbox[0] + (bbox[2] - bbox[0]) / 2.0,
-                    bbox[1] + (bbox[3] - bbox[1]) / 2.0,
-                ),
-                color=annotate_color,
-                weight="bold",
-                fontsize=12,
-                ha="center",
-                va="center",
+            font = cv2.FONT_ITALIC
+            font_scale = 1
+            thickness = 3
+            text_width, text_height = cv2.getTextSize(
+                text, font, font_scale, thickness
+            )[0]
+
+            center_x, center_y = (x1 + (x2 - x1) // 2, y1 + (y2 - y1) // 2)
+            text_pos = (
+                center_x - text_width // 2,
+                center_y + text_height // 2,
+            )
+            cv2.putText(
+                image,
+                text,
+                text_pos,
+                font,
+                font_scale,
+                annotate_color,
+                thickness=thickness,
             )
 
         if "attention_map" in track_data:
@@ -390,7 +380,7 @@ def plot_single_frame(
             norm_attention_map = attention_map / attention_map.max()
 
             high_att_mask = norm_attention_map > 0.25  # bin_edges[1]
-            attention_map_img[:, :][high_att_mask] = cmap(track_id)
+            attention_map_img[:, :][high_att_mask] = track_color
             attention_map_img[:, :, 3][high_att_mask] = (
                 norm_attention_map[high_att_mask] * 0.5
             )
@@ -399,16 +389,8 @@ def plot_single_frame(
             # attention_map_img[:, :, 3] = 0.75
 
     if generate_attention_maps:
-        ax.imshow(attention_map_img, vmin=0.0, vmax=1.0)
+        cv2.addWeighted(image, 1.0, attention_map_img, 0.5, 0)
 
-    plt.axis("off")
-    # plt.tight_layout()
-    plt.draw()
-    with io.BytesIO() as image_buffer:
-        plt.savefig(image_buffer, format="jpg", dpi=96)
-        image = Image.open(image_buffer)
-        image = np.array(image)
-    plt.close()
     return image
 
 

@@ -3,6 +3,7 @@
 Tracker which achieves MOT with the provided object detector.
 """
 from collections import deque
+from copy import deepcopy
 
 import numpy as np
 import torch
@@ -677,7 +678,9 @@ class Tracker:
                 # self.results[track.id][self.frame_index]['attention_map'] = \
                 #     track.attention_map.cpu().numpy()
 
-            self.results[track.id][self.frame_index] = results[track.id]
+            self.results[track.id][self.frame_index] = deepcopy(
+                results[track.id]
+            )
 
         for t in self.inactive_tracks:
             t.count_inactive += 1
