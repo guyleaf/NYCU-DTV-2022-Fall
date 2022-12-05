@@ -125,8 +125,16 @@ python src/track.py with \
 <div align="center">
     <img src="docs/snakeboard.gif" alt="Snakeboard demo" width="600"/>
 </div>
+### Demo with GUI
+
+```bash
+python src/demo.py with reid write_images=pretty
+```
+
+![demo_gui.png](docs/demo_gui.png)
 
 ## Publication
+
 If you use this software in your research, please cite our publication:
 
 ```
