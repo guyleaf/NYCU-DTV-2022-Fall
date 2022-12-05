@@ -20,11 +20,9 @@ class StreamTrackerManager:
         self,
         tracker: Tracker,
         transform: Compose,
-        interpolate: bool,
         _log,
     ) -> None:
         self._log = _log
-        self._interpolate = interpolate
         self._transform = transform
         self._tracker = tracker
         self._stream_tracker = None
@@ -44,7 +42,6 @@ class StreamTrackerManager:
             capture,
             self._transform,
             output_queue,
-            self._interpolate,
             self._log,
         )
         self._stream_tracker.daemon = True
@@ -58,14 +55,12 @@ class StreamTracker(threading.Thread):
         capture: BaseCapture,
         data_transform: Compose,
         output_queue: Queue,
-        interpolate: bool,
         log,
         *args,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
         self._output_queue = output_queue
-        self._interpolate = interpolate
         self._log = log
         self._capture = capture
         self._data_transform = data_transform

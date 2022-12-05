@@ -148,20 +148,22 @@ class DemoSettings:
         sources.rowconfigure(list(range(sources.grid_size()[1])), minsize=30)
         sources.grid(row=0, column=0, sticky=NSEW)
 
-        controls = ttk.Labelframe(
-            self._content, text="Controls", padding=(5, 0, 5, 5)
-        )
+        # FIXME: restarting the video will not have bbox selection function
+        # because we use StreamOutputPipeline to filter out the bboxes
+        # controls = ttk.Labelframe(
+        #     self._content, text="Controls", padding=(5, 0, 5, 5)
+        # )
 
-        self._video_restart_button = ttk.Button(
-            controls, text="Restart", command=self._app_view_model.restart
-        )
-        self._video_restart_button.grid(row=0, column=0, sticky="nse")
+        # self._video_restart_button = ttk.Button(
+        #     controls, text="Restart", command=self._app_view_model.restart
+        # )
+        # self._video_restart_button.grid(row=0, column=0, sticky="nse")
 
-        controls.columnconfigure(
-            list(range(controls.grid_size()[0])), weight=1
-        )
-        controls.rowconfigure(list(range(controls.grid_size()[1])), minsize=30)
-        controls.grid(row=1, column=0, sticky=NSEW)
+        # controls.columnconfigure(
+        #     list(range(controls.grid_size()[0])), weight=1
+        # )
+        # controls.rowconfigure(list(range(controls.grid_size()[1])), minsize=30)
+        # controls.grid(row=1, column=0, sticky=NSEW)
 
         self._content.columnconfigure(0, weight=1)
 
@@ -281,7 +283,7 @@ def excepthook(
 
 sys.excepthook = excepthook
 
-ex = sacred.Experiment("track")
+ex = sacred.Experiment("demo")
 ex.add_config("cfgs/demo.yaml")
 ex.add_named_config("reid", "cfgs/track_reid.yaml")
 
@@ -292,7 +294,6 @@ def main(
     seed: int,
     obj_detect_checkpoint_file: str,
     tracker_cfg: Dict[str, Any],
-    interpolate: bool,
     verbose: bool,
     write_images: Union[bool, str],
     generate_attention_maps: bool,
@@ -348,7 +349,6 @@ def main(
     if verbose:
         track_logger = _log.info
 
-    interpolate = interpolate
     transform = Compose(
         make_coco_transforms("val", img_transform, overflow_boxes=True)
     )
@@ -371,7 +371,6 @@ def main(
     stream_manager = StreamTrackerManager(
         tracker,
         transform,
-        interpolate,
         _log,
     )
     stream_output_pipeline = StreamOutputPipeline(
