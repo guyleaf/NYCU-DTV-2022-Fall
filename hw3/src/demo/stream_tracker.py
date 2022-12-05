@@ -134,7 +134,16 @@ class StreamOutputPipeline(threading.Thread):
         self._output_queue = Queue(maxsize=output_queue_size)
         self._input_filters = Queue()
         self._filters = []
+        self._select_default = True
         self._log.info("Initilized StreamOutputPipeline.")
+
+    @property
+    def select_default(self) -> bool:
+        return self._select_default
+
+    @select_default.setter
+    def select_default(self, status: bool):
+        self._select_default = status
 
     @property
     def input_filters(self) -> Queue:
@@ -149,16 +158,23 @@ class StreamOutputPipeline(threading.Thread):
         return self._output_queue
 
     def _post_process(self, result: dict):
-        image = result["image"]
-        tracks = result["tracks"].copy()
+        tracks = result["tracks"]
 
-        for track_id in self._filters:
-            if track_id in tracks:
-                del tracks[track_id]
+        if self._select_default:
+            tracks = tracks.copy()
+            for track_id in self._filters:
+                if track_id in tracks:
+                    del tracks[track_id]
+        else:
+            new_tracks = {}
+            for track_id in self._filters:
+                if track_id in tracks:
+                    new_tracks[track_id] = tracks[track_id]
+            tracks = new_tracks
 
         result["image"] = plot_single_frame(
             tracks,
-            image,
+            result["image"],
             self._write_images,
             self._cmap,
             self._generate_attention_maps,

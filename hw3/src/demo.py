@@ -51,6 +51,10 @@ class AppViewModel:
         self._is_camera_source = False
         self._filters = set()
 
+    def _clear_all_filters(self):
+        self._filters = set()
+        self._stream_output_pipeline.input_filters.put(set())
+
     def _update_filters(self, tracks: dict, x: int, y: int) -> None:
         track_id = get_track_id_by_xy(tracks, x, y)
         if track_id is None:
@@ -62,13 +66,19 @@ class AppViewModel:
             self._filters.add(track_id)
         self._stream_output_pipeline.input_filters.put(self._filters.copy())
 
-    def update_filters(self, x: int, y: int, image_size: "tuple[int, int]"):
+    def _get_current_tracks(self) -> None:
         if self._is_camera_source:
             tracks = self._buffer[-1]["tracks"]
             orig_size = self._buffer[-1]["orig_size"]
         else:
             tracks = self._buffer[self._frame_index - 1]["tracks"]
             orig_size = self._buffer[self._frame_index - 1]["orig_size"]
+        return tracks, orig_size
+
+    def update_filters(
+        self, x: int, y: int, image_size: "tuple[int, int]"
+    ) -> None:
+        tracks, orig_size = self._get_current_tracks()
 
         # convert x, y into original image space
         x = int(x * (orig_size[1] / image_size[1]))
@@ -78,6 +88,14 @@ class AppViewModel:
             target=self._update_filters,
             args=(tracks, x, y),
         ).start()
+
+    def select_all_tracks(self) -> None:
+        self._clear_all_filters()
+        self._stream_output_pipeline.select_default = True
+
+    def hide_all_tracks(self) -> None:
+        self._clear_all_filters()
+        self._stream_output_pipeline.select_default = False
 
     def play(self, source: Union[int, str]) -> bool:
         self._is_camera_source = isinstance(source, int)
@@ -99,10 +117,10 @@ class AppViewModel:
         self._stream_output_pipeline.input_filters.put_nowait(set())
         return True
 
-    def restart(self):
+    def restart(self) -> None:
         self._frame_index = 0
 
-    def get_frame(self):
+    def get_frame(self) -> np.ndarray:
         queue = self._stream_output_pipeline.output_queue
         if not queue.empty():
             self._buffer.append(queue.get_nowait())
@@ -148,22 +166,37 @@ class DemoSettings:
         sources.rowconfigure(list(range(sources.grid_size()[1])), minsize=30)
         sources.grid(row=0, column=0, sticky=NSEW)
 
+        bbox_control = ttk.Labelframe(
+            self._content, text="BBox Control", padding=(5, 0, 5, 5)
+        )
+
         # FIXME: restarting the video will not have bbox selection function
         # because we use StreamOutputPipeline to filter out the bboxes
-        # controls = ttk.Labelframe(
-        #     self._content, text="Controls", padding=(5, 0, 5, 5)
-        # )
-
         # self._video_restart_button = ttk.Button(
         #     controls, text="Restart", command=self._app_view_model.restart
         # )
         # self._video_restart_button.grid(row=0, column=0, sticky="nse")
 
-        # controls.columnconfigure(
-        #     list(range(controls.grid_size()[0])), weight=1
-        # )
-        # controls.rowconfigure(list(range(controls.grid_size()[1])), minsize=30)
-        # controls.grid(row=1, column=0, sticky=NSEW)
+        self._select_all_button = ttk.Button(
+            bbox_control,
+            text="Select All",
+            command=self._app_view_model.select_all_tracks,
+        )
+        self._select_all_button.grid(row=0, column=0, sticky=NSEW)
+        self._hide_all_button = ttk.Button(
+            bbox_control,
+            text="Hide All",
+            command=self._app_view_model.hide_all_tracks,
+        )
+        self._hide_all_button.grid(row=0, column=1, sticky=NSEW)
+
+        bbox_control.columnconfigure(
+            list(range(bbox_control.grid_size()[0])), weight=1
+        )
+        bbox_control.rowconfigure(
+            list(range(bbox_control.grid_size()[1])), minsize=30
+        )
+        bbox_control.grid(row=1, column=0, sticky=NSEW)
 
         self._content.columnconfigure(0, weight=1)
 
