@@ -6,8 +6,8 @@ class HlsTech {
 
     this._config = {
       enableWorker: true,
-      liveSyncDuration: 1,
-      liveMaxLatencyDuration: 2,
+      liveSyncDurationCount: 1,
+      liveMaxLatencyDurationCount: 3,
       maxLiveSyncPlaybackRate: 2,
       liveDurationInfinity: true,
       lowLatencyMode: true,

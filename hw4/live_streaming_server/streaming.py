@@ -1,5 +1,5 @@
 import logging
-import signal
+import platform
 from multiprocessing import Process
 
 import cv2
@@ -12,7 +12,6 @@ class StreamingService(Process):
     def __init__(self, config: Config) -> None:
         super().__init__(daemon=True)
         self.config = config
-        self._stop_signal = False
         self._camera_params = {
             "CAP_PROP_FRAME_WIDTH": 1920,
             "CAP_PROP_FRAME_HEIGHT": 1080,
@@ -37,16 +36,20 @@ class StreamingService(Process):
             "-livestream": True,
             "-clear_prev_assets": True,
             "-window_size": 1,
+            "-hls_init_time": 1,
             "-hls_time": 1,
+            "-hls_list_size": 3,
             "-vcodec": "libx264",
         }
 
-        signal.signal(signal.SIGTERM, self.stop)
-
     def run(self) -> None:
+        backend = cv2.CAP_DSHOW
+        if platform.system() == "Linux":
+            backend = cv2.CAP_V4L2
+
         self._stream = CamGear(
             source=self.config.DEVICE,
-            backend=cv2.CAP_DSHOW,
+            backend=backend,
             logging=self.config.DEBUG,
             **self._camera_params
         ).start()
@@ -61,7 +64,7 @@ class StreamingService(Process):
         )
 
         try:
-            while not self._stop_signal:
+            while True:
                 # read frames from stream
                 frame = self._stream.read()
                 if frame is None:
@@ -72,13 +75,9 @@ class StreamingService(Process):
                     cv2.imshow("Capture", frame)
                     cv2.waitKey(1)
         finally:
-            self._stop_signal = True
             self._stop()
 
         logging.log(logging.INFO, "Finished!")
-
-    def stop(self):
-        self._stop_signal = True
 
     def _stop(self) -> None:
         if self._stream is not None:
