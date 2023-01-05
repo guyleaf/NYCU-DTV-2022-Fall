@@ -68,6 +68,9 @@ class StreamingService(Process):
                     break
 
                 self._streamer.stream(frame)
+                if self.config.DEBUG:
+                    cv2.imshow("Capture", frame)
+                    cv2.waitKey(1)
         finally:
             self._stop_signal = True
             self._stop()
