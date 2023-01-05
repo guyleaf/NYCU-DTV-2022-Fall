@@ -1,7 +1,9 @@
 typed-argument-parser ~= 1.7.2
 watchdog ~= 2.2.0
 Flask ~= 2.2.2
-python-ffmpeg-video-streaming ~= 0.1.15
+flask-cors ~= 3.0.10
+opencv-python ~= 4.7.0.68
+vidgear[core] ~= 0.2.6
 
 black ~= 22.12.0
 flake8 ~= 6.0.0
