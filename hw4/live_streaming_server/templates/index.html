@@ -17,7 +17,6 @@
     />
     <script src="{{ url_for('static', filename='libs/tocas/tocas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='libs/hls/hls.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='libs/ml5/ml5.min.js') }}"></script>
   </head>
   <body>
     <header>
@@ -52,7 +51,6 @@
       </div>
 
       <script src="{{ url_for('static', filename='streamer.js') }}"></script>
-      <script src="{{ url_for('static', filename='model.js') }}"></script>
       <script type="text/javascript">
         var options = {
           src: "{{ url_for('static', filename='live/' + config.M3U8_FILE) }}",
@@ -60,12 +58,9 @@
           canvasElement: document.getElementById("canvas"),
         };
         const streamer = new HlsTech(options);
-        const model = new Model(options);
 
         document.addEventListener("DOMContentLoaded", function () {
-          console.log("ml5 version:", ml5.version);
           streamer.start();
-          model.start();
         });
       </script>
     </main>
