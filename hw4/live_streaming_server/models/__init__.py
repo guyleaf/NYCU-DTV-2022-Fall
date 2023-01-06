@@ -1,7 +1,7 @@
 from typing import Literal
 
-from .base import OPENVINO_BASE
-from .yolov7 import YOLOV7_OPENVINO
+from .base import OpenVINOBase
+from .yolov7 import Yolov7OpenVINO
 
 YOLOX7_MODELS = Literal[
     "yolov7/yolov7-tiny",
@@ -12,4 +12,4 @@ YOLOX7_MODELS = Literal[
 
 MODELS = Literal[YOLOX7_MODELS]
 
-__all__ = ["OPENVINO_BASE", "YOLOV7_OPENVINO", "MODELS"]
+__all__ = ["OpenVINOBase", "Yolov7OpenVINO", "MODELS"]

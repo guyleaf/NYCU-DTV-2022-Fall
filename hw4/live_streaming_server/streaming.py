@@ -1,31 +1,31 @@
-import platform
 from multiprocessing import Process
 
 import cv2
 from vidgear.gears import CamGear, StreamGear
 
-from live_streaming_server.models.base import OPENVINO_BASE
+from live_streaming_server.models.base import OpenVINOBase
 
 from .config import Config
+from .utils import is_darwin, is_windows
 
 
 class StreamingService(Process):
-    def __init__(self, model: OPENVINO_BASE, config: Config) -> None:
+    def __init__(self, model: OpenVINOBase, config: Config) -> None:
         super().__init__(daemon=True)
         self.config = config
         self._model = model
         self._camera_params = {
-            "CAP_PROP_FRAME_WIDTH": 1920,
-            "CAP_PROP_FRAME_HEIGHT": 1080,
+            "CAP_PROP_FRAME_WIDTH": 1280,
+            "CAP_PROP_FRAME_HEIGHT": 720,
             "CAP_PROP_FPS": 30,
             "CAP_PROP_FOURCC": cv2.VideoWriter_fourcc(*"MJPG"),
         }
         self._stream_params = {
             "-streams": [
-                {
-                    "-resolution": "1280x720",
-                    "-framerate": 30.0,
-                },  # Stream2: 1280x720 at 30fps framerate
+                # {
+                #     "-resolution": "1280x720",
+                #     "-framerate": 30.0,
+                # },  # Stream2: 1280x720 at 30fps framerate
                 {
                     "-resolution": "640x360",
                     "-framerate": 30.0,
@@ -37,19 +37,32 @@ class StreamingService(Process):
             ],
             "-livestream": True,
             "-clear_prev_assets": True,
-            "-window_size": 1,
             "-hls_init_time": 2,
             "-hls_time": 1,
             "-hls_list_size": 3,
-            "-vcodec": "libx264",
+            "-vcodec": "libx264"
         }
+
+        if is_darwin():
+            self._stream_params.update(
+                {
+                    "-vcodec": "h264_videotoolbox",
+                    "-realtime": "true",
+                    "-allow_sw": "true",
+                    "-profile:v": 3,
+                    "-level": 52,
+                    "-coder": 2
+                }
+            )
 
     def run(self) -> None:
         self._model.initialize()
 
-        backend = cv2.CAP_DSHOW
-        if platform.system() == "Linux":
-            backend = cv2.CAP_V4L2
+        backend = cv2.CAP_V4L2
+        if is_windows():
+            backend = cv2.CAP_DSHOW
+        elif is_darwin():
+            backend = cv2.CAP_AVFOUNDATION
 
         self._stream = CamGear(
             source=self.config.DEVICE,

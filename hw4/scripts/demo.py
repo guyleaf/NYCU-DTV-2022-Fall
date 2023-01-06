@@ -4,7 +4,7 @@ from typing import Literal
 from tap import Tap
 
 from live_streaming_server import Config, LiveStreamingServer, get_root
-from live_streaming_server.models import MODELS, YOLOV7_OPENVINO
+from live_streaming_server.models import MODELS, Yolov7OpenVINO
 from live_streaming_server.streaming import StreamingService
 
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     if not os.path.exists(config.m3u8_root_dir):
         os.mkdir(config.m3u8_root_dir)
 
-    model = YOLOV7_OPENVINO(
+    model = Yolov7OpenVINO(
         parser.model,
         parser.infer_device,
         parser.pre_api,

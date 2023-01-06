@@ -6,7 +6,7 @@ from openvino.runtime import AsyncInferQueue, Core, Layout, PartialShape
 from .utils import get_model_path
 
 
-class OPENVINO_BASE:
+class OpenVINOBase:
     def __init__(
         self,
         model: str,

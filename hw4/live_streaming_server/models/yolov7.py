@@ -6,10 +6,10 @@ import cv2
 import numpy as np
 
 from .classes import COCO2017_CLASSES
-from .base import OPENVINO_BASE
+from .base import OpenVINOBase
 
 
-class YOLOV7_OPENVINO(OPENVINO_BASE):
+class Yolov7OpenVINO(OpenVINOBase):
     def __init__(
         self,
         model: str,
@@ -161,6 +161,8 @@ class YOLOV7_OPENVINO(OPENVINO_BASE):
 
     def draw(self, img, boxinfo):
         for xyxy, conf, cls in boxinfo:
+            cls = int(cls)
+            conf = float(conf)
             label = f"{self._classes[int(cls)]} {conf:.1f}"
             self.plot_one_box(
                 xyxy,
@@ -237,7 +239,7 @@ class YOLOV7_OPENVINO(OPENVINO_BASE):
 
             if self.end2end:
                 results = results[0]
-                _, boxes, [class_ids], [scores] = np.split(
+                _, boxes, class_ids, scores = np.split(
                     results, [1, 5, 6], axis=-1
                 )
             else:
