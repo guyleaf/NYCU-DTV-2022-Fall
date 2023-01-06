@@ -33,20 +33,22 @@
       </div>
     </noscript>
     <main id="main-container">
+      <label>FPS: <label id="fps"></label></label>
       <div>
         <video
           id="video"
           width="1280"
           height="720"
-          style="position: fixed"
+          style="position: relative"
           muted
           autoplay
+          playsinline
         ></video>
         <canvas
           id="canvas"
           width="1280"
           height="720"
-          style="position: fixed"
+          style="position: relative; z-index: 1"
         ></canvas>
       </div>
 
@@ -56,12 +58,16 @@
           src: "{{ url_for('static', filename='live/' + config.M3U8_FILE) }}",
           videoElement: document.getElementById("video"),
           canvasElement: document.getElementById("canvas"),
+          fpsElement: document.getElementById("fps")
         };
-        const streamer = new HlsTech(options);
-
-        document.addEventListener("DOMContentLoaded", function () {
-          streamer.start();
-        });
+        if (Hls.isSupported()) {
+          const streamer = new HlsTech(options);
+          document.addEventListener("DOMContentLoaded", function () {
+            streamer.start();
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          options.videoElement.src = options.src;
+        }
       </script>
     </main>
   </body>

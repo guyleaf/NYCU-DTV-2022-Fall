@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import Literal
 
@@ -25,6 +24,8 @@ class ArgumentParse(Tap):
 
     model: MODELS
     """Path to an .xml or .onnx file with a trained model."""
+    conf_threshold: float = 0.25
+    iou_threshold: float = 0.45
 
     infer_device: Literal["CPU", "GPU"] = "CPU"  # Device name for inference.
     pre_api: bool = False  # Use preprocessing api.
@@ -60,9 +61,6 @@ if __name__ == "__main__":
     if not os.path.exists(config.m3u8_root_dir):
         os.mkdir(config.m3u8_root_dir)
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-
     model = YOLOV7_OPENVINO(
         parser.model,
         parser.infer_device,
@@ -71,6 +69,8 @@ if __name__ == "__main__":
         parser.nireq,
         parser.grid,
         parser.end2end,
+        parser.conf_threshold,
+        parser.iou_threshold,
     )
     service = StreamingService(model, config=config)
     server = LiveStreamingServer(service, config=config)

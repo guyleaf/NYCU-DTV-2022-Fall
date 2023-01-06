@@ -1,6 +1,5 @@
 # Reference: https://github.com/OpenVINO-dev-contest/YOLOv7_OpenVINO_cpp-python/blob/360ac86f6d82aed187b5e2ed57a70d22ad59f64f/python/yolov7.py # noqa: E501
 
-import logging
 import random
 
 import cv2
@@ -19,7 +18,9 @@ class YOLOV7_OPENVINO(OPENVINO_BASE):
         batchsize: int,
         nireq: int,
         grid: bool,
-        end2end: bool
+        end2end: bool,
+        conf_thres: float = 0.25,
+        iou_thres: float = 0.45
     ):
         super().__init__(
             model,
@@ -33,8 +34,8 @@ class YOLOV7_OPENVINO(OPENVINO_BASE):
         # set the hyperparameters
         self.grid = grid
         self.end2end = end2end
-        self.conf_thres = 0.25
-        self.iou_thres = 0.45
+        self.conf_thres = conf_thres
+        self.iou_thres = iou_thres
         self.class_num = len(self._classes)
         self.colors = [
             [random.randint(0, 255) for _ in range(3)] for _ in self._classes
@@ -160,21 +161,25 @@ class YOLOV7_OPENVINO(OPENVINO_BASE):
 
     def draw(self, img, boxinfo):
         for xyxy, conf, cls in boxinfo:
+            label = f"{self._classes[int(cls)]} {conf:.1f}"
             self.plot_one_box(
                 xyxy,
                 img,
-                label=self._classes[int(cls)],
+                label=label,
                 color=self.colors[int(cls)],
-                line_thickness=2,
+                line_thickness=3,
             )
 
     def postprocess(self, infer_request, info):
         src_img_list, src_size = info
         for batch_id in range(self.batchsize):
             if self.grid:
-                results = np.expand_dims(
-                    infer_request.get_output_tensor(0).data[batch_id], axis=0
-                )
+                results = infer_request.get_output_tensor(0)
+                if len(results.shape) == 3:
+                    results = results.data[batch_id]
+                else:
+                    results = results.data
+                results = np.expand_dims(results, axis=0)
             else:
                 output = []
                 # Get the each feature map's output data
@@ -232,7 +237,9 @@ class YOLOV7_OPENVINO(OPENVINO_BASE):
 
             if self.end2end:
                 results = results[0]
-                *boxes, class_ids, scores = results
+                _, boxes, [class_ids], [scores] = np.split(
+                    results, [1, 5, 6], axis=-1
+                )
             else:
                 boxes, scores, class_ids = self.nms(
                     results, self.conf_thres, self.iou_thres

@@ -3,6 +3,11 @@ class HlsTech {
     let self = this;
     this._isLive = false;
     this._options = _options;
+    this._states = {
+      droppedFrames: 0,
+      fps: 0,
+      totalFrames: 0
+    }
 
     this._config = {
       enableWorker: true,
@@ -19,6 +24,10 @@ class HlsTech {
       if (data.details != undefined && data.details.type !== 'VOD') {
         self._isLive = true;
       }
+    });
+
+    this._player.on(Hls.Events.MANIFEST_LOADED, function (event, data) {
+      self._options.videoElement.play();
     });
 
     this._player.on(Hls.Events.ERROR, function (eventName, data) {
@@ -69,7 +78,6 @@ class HlsTech {
       b.width = u[i].width;
       b.resolution = u[i].attrs.RESOLUTION
       b.bane = u[i].name;
-      console.log(u[i]);
       bitrates.push(b);
     }
 
@@ -97,8 +105,16 @@ class HlsTech {
   };
 
   start() {
+    let self = this;
     this._player.loadSource(this._options.src);
     this._player.attachMedia(this._options.videoElement);
+    setInterval(() => {
+      let videoPlaybackQuality = self._options.videoElement.getVideoPlaybackQuality();
+      self._states.droppedFrames = videoPlaybackQuality.droppedVideoFrames;
+      self._states.fps = (videoPlaybackQuality.totalVideoFrames - self._states.totalFrames);
+      self._states.totalFrames = videoPlaybackQuality.totalVideoFrames;
+      self._options.fpsElement.textContent = self._states.fps;
+    }, 1000);
   }
 
   destroy() {

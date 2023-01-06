@@ -1,4 +1,3 @@
-import logging
 import platform
 from multiprocessing import Process
 
@@ -39,7 +38,7 @@ class StreamingService(Process):
             "-livestream": True,
             "-clear_prev_assets": True,
             "-window_size": 1,
-            "-hls_init_time": 1,
+            "-hls_init_time": 2,
             "-hls_time": 1,
             "-hls_list_size": 3,
             "-vcodec": "libx264",
@@ -85,7 +84,7 @@ class StreamingService(Process):
         finally:
             self._stop()
 
-        logging.log(logging.INFO, "Finished!")
+        print("Finished!")
 
     def _stop(self) -> None:
         if self._stream is not None:

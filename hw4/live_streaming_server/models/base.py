@@ -1,4 +1,3 @@
-import logging
 import cv2
 import numpy as np
 from openvino.preprocess import ColorFormat, PrePostProcessor
@@ -86,8 +85,9 @@ class OPENVINO_BASE:
                 [255.0, 255.0, 255.0]
             )
             self.model = ppp.build()
-            logging.log(logging.DEBUG, f"Dump preprocessor: {ppp}")
+            print(f"Dump preprocessor: {ppp}")
 
+        print(f"Inference device: {self.device}")
         self.compiled_model = ie.compile_model(
             model=self.model, device_name=self.device
         )
