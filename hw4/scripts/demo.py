@@ -9,8 +9,8 @@ from live_streaming_server.streaming import StreamingService
 
 
 class ArgumentParse(Tap):
-    server_debug: bool = False  # Enable server debug mode (hot reload)
-    streaming_debug: bool = False  # Enable server debug mode (hot reload)
+    server_debug: bool = False  # Enable server debug mode (hot reload enabled)
+    streaming_debug: bool = False  # Enable streaming server debug mode
     show_model_output: bool = False
 
     static_folder: str = os.path.join(

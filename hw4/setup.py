@@ -9,6 +9,6 @@ setup(
         "numpy",
         "typed-argument-parser~=1.7.2",
         "Flask~=2.2.2",
-        "python-ffmpeg-video-streaming~=0.1.15",
+        "vidgear[core]~=0.2.6",
     ],
 )
