@@ -1,4 +1,5 @@
 import atexit
+import logging
 import os
 
 from flask import Flask
@@ -34,6 +35,7 @@ class LiveStreamingServer:
         )
 
     def stop(self):
-        print("Stopping server...")
-        self._streaming_service.terminate()
-        self._streaming_service.join()
+        logging.log(logging.INFO, "Stopping server...")
+        if self._streaming_service.is_alive():
+            self._streaming_service.terminate()
+            self._streaming_service.join()

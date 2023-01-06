@@ -5,13 +5,16 @@ from multiprocessing import Process
 import cv2
 from vidgear.gears import CamGear, StreamGear
 
+from live_streaming_server.models.base import OPENVINO_BASE
+
 from .config import Config
 
 
 class StreamingService(Process):
-    def __init__(self, config: Config) -> None:
+    def __init__(self, model: OPENVINO_BASE, config: Config) -> None:
         super().__init__(daemon=True)
         self.config = config
+        self._model = model
         self._camera_params = {
             "CAP_PROP_FRAME_WIDTH": 1920,
             "CAP_PROP_FRAME_HEIGHT": 1080,
@@ -43,6 +46,8 @@ class StreamingService(Process):
         }
 
     def run(self) -> None:
+        self._model.initialize()
+
         backend = cv2.CAP_DSHOW
         if platform.system() == "Linux":
             backend = cv2.CAP_V4L2
@@ -50,7 +55,7 @@ class StreamingService(Process):
         self._stream = CamGear(
             source=self.config.DEVICE,
             backend=backend,
-            logging=self.config.DEBUG,
+            logging=self.config.STREAMING_DEBUG,
             **self._camera_params
         ).start()
 
@@ -59,7 +64,7 @@ class StreamingService(Process):
             output=self.config.m3u8_file_path,
             format="hls",
             custom_ffmpeg=self.config.FFMPEG_PATH,
-            logging=self.config.DEBUG,
+            logging=self.config.STREAMING_DEBUG,
             **self._stream_params
         )
 
@@ -70,8 +75,11 @@ class StreamingService(Process):
                 if frame is None:
                     break
 
+                # in-place inference
+                self._model.infer_image(frame)
+
                 self._streamer.stream(frame)
-                if self.config.DEBUG:
+                if self.config.SHOW_MODEL_OUTPUT:
                     cv2.imshow("Capture", frame)
                     cv2.waitKey(1)
         finally:

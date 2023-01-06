@@ -1,107 +1,43 @@
 # Reference: https://github.com/OpenVINO-dev-contest/YOLOv7_OpenVINO_cpp-python/blob/360ac86f6d82aed187b5e2ed57a70d22ad59f64f/python/yolov7.py # noqa: E501
 
-from openvino.runtime import Core
+import logging
+import random
+
 import cv2
 import numpy as np
-import random
-import time
-from openvino.preprocess import PrePostProcessor, ColorFormat
-from openvino.runtime import Layout, AsyncInferQueue, PartialShape
+
+from .classes import COCO2017_CLASSES
+from .base import OPENVINO_BASE
 
 
-class YOLOV7_OPENVINO(object):
-    def __init__(self, model_path, device, pre_api, batchsize, nireq, grid):
+class YOLOV7_OPENVINO(OPENVINO_BASE):
+    def __init__(
+        self,
+        model: str,
+        device: str,
+        pre_api: bool,
+        batchsize: int,
+        nireq: int,
+        grid: bool,
+        end2end: bool
+    ):
+        super().__init__(
+            model,
+            device,
+            pre_api,
+            batchsize,
+            nireq,
+            COCO2017_CLASSES,
+            (640, 640),
+        )
         # set the hyperparameters
-        self.classes = [
-            "person",
-            "bicycle",
-            "car",
-            "motorcycle",
-            "airplane",
-            "bus",
-            "train",
-            "truck",
-            "boat",
-            "traffic light",
-            "fire hydrant",
-            "stop sign",
-            "parking meter",
-            "bench",
-            "bird",
-            "cat",
-            "dog",
-            "horse",
-            "sheep",
-            "cow",
-            "elephant",
-            "bear",
-            "zebra",
-            "giraffe",
-            "backpack",
-            "umbrella",
-            "handbag",
-            "tie",
-            "suitcase",
-            "frisbee",
-            "skis",
-            "snowboard",
-            "sports ball",
-            "kite",
-            "baseball bat",
-            "baseball glove",
-            "skateboard",
-            "surfboard",
-            "tennis racket",
-            "bottle",
-            "wine glass",
-            "cup",
-            "fork",
-            "knife",
-            "spoon",
-            "bowl",
-            "banana",
-            "apple",
-            "sandwich",
-            "orange",
-            "broccoli",
-            "carrot",
-            "hot dog",
-            "pizza",
-            "donut",
-            "cake",
-            "chair",
-            "couch",
-            "potted plant",
-            "bed",
-            "dining table",
-            "toilet",
-            "tv",
-            "laptop",
-            "mouse",
-            "remote",
-            "keyboard",
-            "cell phone",
-            "microwave",
-            "oven",
-            "toaster",
-            "sink",
-            "refrigerator",
-            "book",
-            "clock",
-            "vase",
-            "scissors",
-            "teddy bear",
-            "hair drier",
-            "toothbrush",
-        ]
-        self.batchsize = batchsize
         self.grid = grid
-        self.img_size = (640, 640)
-        self.conf_thres = 0.1
-        self.iou_thres = 0.6
-        self.class_num = 80
+        self.end2end = end2end
+        self.conf_thres = 0.25
+        self.iou_thres = 0.45
+        self.class_num = len(self._classes)
         self.colors = [
-            [random.randint(0, 255) for _ in range(3)] for _ in self.classes
+            [random.randint(0, 255) for _ in range(3)] for _ in self._classes
         ]
         self.stride = [8, 16, 32]
         self.anchor_list = [
@@ -121,66 +57,6 @@ class YOLOV7_OPENVINO(object):
         self.feature = [
             [int(j / self.stride[i]) for j in self.img_size] for i in range(3)
         ]
-
-        ie = Core()
-        self.model = ie.read_model(model_path)
-        self.input_layer = self.model.input(0)
-        new_shape = PartialShape(
-            [self.batchsize, 3, self.img_size[0], self.img_size[1]]
-        )
-        self.model.reshape({self.input_layer.any_name: new_shape})
-        self.pre_api = pre_api
-        if self.pre_api:
-            # Preprocessing API
-            ppp = PrePostProcessor(self.model)
-            # Declare section of desired application's input format
-            ppp.input().tensor().set_layout(Layout("NHWC")).set_color_format(
-                ColorFormat.BGR
-            )
-            # Here, it is assumed that the model has "NCHW" layout for input.
-            ppp.input().model().set_layout(Layout("NCHW"))
-            # Convert current color format (BGR) to RGB
-            ppp.input().preprocess().convert_color(ColorFormat.RGB).scale(
-                [255.0, 255.0, 255.0]
-            )
-            self.model = ppp.build()
-            print(f"Dump preprocessor: {ppp}")
-
-        self.compiled_model = ie.compile_model(
-            model=self.model, device_name=device
-        )
-        self.infer_queue = AsyncInferQueue(self.compiled_model, nireq)
-
-    def letterbox(self, img, new_shape=(640, 640), color=(114, 114, 114)):
-        # Resize and pad image while meeting stride-multiple constraints
-        shape = img.shape[:2]  # current shape [height, width]
-        if isinstance(new_shape, int):
-            new_shape = (new_shape, new_shape)
-
-        # Scale ratio (new / old)
-        r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
-        new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
-        dw, dh = (
-            new_shape[1] - new_unpad[0],
-            new_shape[0] - new_unpad[1],
-        )  # wh padding
-
-        # divide padding into 2 sides
-        dw /= 2
-        dh /= 2
-
-        # resize
-        if shape[::-1] != new_unpad:
-            img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
-        top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-        left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
-
-        # add border
-        img = cv2.copyMakeBorder(
-            img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color
-        )
-
-        return img
 
     def xywh2xyxy(self, x):
         # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
@@ -287,12 +163,10 @@ class YOLOV7_OPENVINO(object):
             self.plot_one_box(
                 xyxy,
                 img,
-                label=self.classes[int(cls)],
+                label=self._classes[int(cls)],
                 color=self.colors[int(cls)],
                 line_thickness=2,
             )
-        cv2.imshow("Press ESC to Exit", img)
-        cv2.waitKey(1)
 
     def postprocess(self, infer_request, info):
         src_img_list, src_size = info
@@ -356,76 +230,16 @@ class YOLOV7_OPENVINO(object):
                     result.append(src)
                 results = np.concatenate(result, 1)
 
-            boxes, scores, class_ids = self.nms(
-                results, self.conf_thres, self.iou_thres
-            )
+            if self.end2end:
+                results = results[0]
+                *boxes, class_ids, scores = results
+            else:
+                boxes, scores, class_ids = self.nms(
+                    results, self.conf_thres, self.iou_thres
+                )
+
             img_shape = self.img_size
             self.scale_coords(img_shape, src_size, boxes)
 
             # Draw the results
             self.draw(src_img_list[batch_id], zip(boxes, scores, class_ids))
-
-    def infer_image(self, img_path):
-        # Read image
-        src_img = cv2.imread(img_path)
-        src_img_list = []
-        src_img_list.append(src_img)
-        img = self.letterbox(src_img, self.img_size)
-        src_size = src_img.shape[:2]
-        img = img.astype(dtype=np.float32)
-        if not self.pre_api:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # BGR to RGB
-            img /= 255.0
-            img.transpose(2, 0, 1)  # NHWC to NCHW
-        input_image = np.expand_dims(img, 0)
-
-        # Set callback function for postprocess
-        self.infer_queue.set_callback(self.postprocess)
-        # Do inference
-        self.infer_queue.start_async(
-            {self.input_layer.any_name: input_image}, (src_img_list, src_size)
-        )
-        self.infer_queue.wait_all()
-        cv2.imwrite("yolov7_out.jpg", src_img_list[0])
-
-    def infer_cam(self, source):
-        # Set callback function for postprocess
-        self.infer_queue.set_callback(self.postprocess)
-        # Capture camera source
-        cap = cv2.VideoCapture(source)
-        src_img_list = []
-        img_list = []
-        count = 0
-        start_time = time.time()
-        while cap.isOpened():
-            _, frame = cap.read()
-            img = self.letterbox(frame, self.img_size)
-            src_size = frame.shape[:2]
-            img = img.astype(dtype=np.float32)
-            # Preprocessing
-            input_image = np.expand_dims(img, 0)
-            # Batching
-            img_list.append(input_image)
-            src_img_list.append(frame)
-            if len(img_list) < self.batchsize:
-                continue
-            img_batch = np.concatenate(img_list)
-
-            # Do inference
-            self.infer_queue.start_async(
-                {self.input_layer.any_name: img_batch},
-                (src_img_list, src_size),
-            )
-            src_img_list = []
-            img_list = []
-            count = count + self.batchsize
-            c = cv2.waitKey(1)
-            if c == 27:
-                self.infer_queue.wait_all()
-                break
-        cap.release()
-        cv2.destroyAllWindows()
-        end_time = time.time()
-        # Calculate the average FPS\n",
-        fps = count / (end_time - start_time)
-        print("throughput: {:.2f} fps".format(fps))
