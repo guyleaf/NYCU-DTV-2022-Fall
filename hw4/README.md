@@ -12,6 +12,7 @@
 1. Anaconda or miniconda
 2. Git
 3. [Git LFS](https://git-lfs.com/)
+4. FFmpeg
 
 ## Installation
 
