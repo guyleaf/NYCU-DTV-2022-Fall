@@ -163,12 +163,12 @@ class Yolov7OpenVINO(OpenVINOBase):
         for xyxy, conf, cls in boxinfo:
             cls = int(cls)
             conf = float(conf)
-            label = f"{self._classes[int(cls)]} {conf:.1f}"
+            label = f"{self._classes[cls]} {conf:.1f}"
             self.plot_one_box(
                 xyxy,
                 img,
                 label=label,
-                color=self.colors[int(cls)],
+                color=self.colors[cls],
                 line_thickness=3,
             )
 
