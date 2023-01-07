@@ -1,6 +1,8 @@
 from multiprocessing import Process
 
 import cv2
+import time
+
 from vidgear.gears import CamGear, StreamGear
 
 from live_streaming_server.models.base import OpenVINOBase
@@ -22,10 +24,6 @@ class StreamingService(Process):
         }
         self._stream_params = {
             "-streams": [
-                # {
-                #     "-resolution": "1280x720",
-                #     "-framerate": 30.0,
-                # },  # Stream2: 1280x720 at 30fps framerate
                 {
                     "-resolution": "640x360",
                     "-framerate": 30.0,
@@ -40,7 +38,7 @@ class StreamingService(Process):
             "-hls_init_time": 2,
             "-hls_time": 1,
             "-hls_list_size": 3,
-            "-vcodec": "libx264"
+            "-vcodec": "libx264",
         }
 
         if is_darwin():
@@ -51,7 +49,7 @@ class StreamingService(Process):
                     "-allow_sw": "true",
                     "-profile:v": 3,
                     "-level": 52,
-                    "-coder": 2
+                    "-coder": 2,
                 }
             )
 
@@ -81,6 +79,8 @@ class StreamingService(Process):
         )
 
         try:
+            start_time = time.time()
+            counter = 0
             while True:
                 # read frames from stream
                 frame = self._stream.read()
@@ -91,6 +91,14 @@ class StreamingService(Process):
                 self._model.infer_image(frame)
 
                 self._streamer.stream(frame)
+
+                if not self.config.STREAMING_DEBUG:
+                    counter += 1
+                    if (time.time() - start_time) > 1:
+                        print("FPS: ", counter / (time.time() - start_time))
+                        counter = 0
+                        start_time = time.time()
+
                 if self.config.SHOW_MODEL_OUTPUT:
                     cv2.imshow("Capture", frame)
                     cv2.waitKey(1)

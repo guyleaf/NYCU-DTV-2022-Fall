@@ -31,7 +31,6 @@ class ArgumentParse(Tap):
     pre_api: bool = False  # Use preprocessing api.
     grid: bool = False  # With grid in model.
     end2end: bool = False  # With end2end in model.
-    nireq: int = 1  # Number of InferRequests, only work in CPU device.
     """
     Explanation:
     https://docs.openvino.ai/2019_R1/_docs_IE_DG_Intro_to_Performance.html
@@ -66,7 +65,6 @@ if __name__ == "__main__":
         parser.infer_device,
         parser.pre_api,
         1,
-        parser.nireq,
         parser.grid,
         parser.end2end,
         parser.conf_threshold,

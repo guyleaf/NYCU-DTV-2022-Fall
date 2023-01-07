@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from openvino.preprocess import ColorFormat, PrePostProcessor
-from openvino.runtime import AsyncInferQueue, Core, Layout, PartialShape
+from openvino.runtime import Core, Layout, PartialShape
 
 from .utils import get_model_path
 
@@ -13,16 +13,14 @@ class OpenVINOBase:
         device: str,
         pre_api: bool,
         batchsize: int,
-        nireq: int,
         classes: list[str],
-        img_size: tuple[int]
+        img_size: tuple[int],
     ) -> None:
         # set the hyperparameters
         self._classes = classes
         self.batchsize = batchsize
         self.img_size = img_size
         self.pre_api = pre_api
-        self.nireq = nireq
         self.device = device
 
         self._model = model
@@ -88,10 +86,10 @@ class OpenVINOBase:
             print(f"Dump preprocessor: {ppp}")
 
         print(f"Inference device: {self.device}")
+        config = {"PERFORMANCE_HINT": "THROUGHPUT"}
         self.compiled_model = ie.compile_model(
-            model=self.model, device_name=self.device
+            model=self.model, device_name=self.device, config=config
         )
-        self.infer_queue = AsyncInferQueue(self.compiled_model, self.nireq)
 
     def postprocess(self, infer_request, info):
         raise NotImplementedError("The method postprocess is not implemented.")
@@ -109,10 +107,7 @@ class OpenVINOBase:
             img = np.ascontiguousarray(img)
         input_image = np.expand_dims(img, 0)
 
-        # Set callback function for postprocess
-        self.infer_queue.set_callback(self.postprocess)
-        # Do inference
-        self.infer_queue.start_async(
-            {self.input_layer.any_name: input_image}, (src_img_list, src_size)
-        )
-        self.infer_queue.wait_all()
+        infer_request = self.compiled_model.create_infer_request()
+        infer_request.start_async({self.input_layer.any_name: input_image})
+        infer_request.wait()
+        self.postprocess(infer_request, (src_img_list, src_size))

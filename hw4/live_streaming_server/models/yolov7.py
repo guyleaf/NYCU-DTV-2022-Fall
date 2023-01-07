@@ -16,18 +16,16 @@ class Yolov7OpenVINO(OpenVINOBase):
         device: str,
         pre_api: bool,
         batchsize: int,
-        nireq: int,
         grid: bool,
         end2end: bool,
         conf_thres: float = 0.25,
-        iou_thres: float = 0.45
+        iou_thres: float = 0.45,
     ):
         super().__init__(
             model,
             device,
             pre_api,
             batchsize,
-            nireq,
             COCO2017_CLASSES,
             (640, 640),
         )
@@ -175,13 +173,14 @@ class Yolov7OpenVINO(OpenVINOBase):
     def postprocess(self, infer_request, info):
         src_img_list, src_size = info
         for batch_id in range(self.batchsize):
-            if self.grid:
-                results = infer_request.get_output_tensor(0)
-                if len(results.shape) == 3:
-                    results = results.data[batch_id]
-                else:
-                    results = results.data
-                results = np.expand_dims(results, axis=0)
+            if self.end2end:
+                results = np.expand_dims(
+                    infer_request.get_output_tensor(0).data, axis=0
+                )
+            elif self.grid:
+                results = np.expand_dims(
+                    infer_request.get_output_tensor(0).data[batch_id], axis=0
+                )
             else:
                 output = []
                 # Get the each feature map's output data

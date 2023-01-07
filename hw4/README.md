@@ -37,10 +37,9 @@ pip install -r requirements.txt
 ```bash
 conda activate live_streaming_server
 
-# nireq: based on you cpu, 2/4/8
 # tip: use --streaming_debug to check fps
 # tip: use --show_model_output to preview frame
-python scripts/demo.py --model "yolov7.yolov7-tiny_int8" --pre_api --grid --nireq 4 --infer_device CPU --ffmpeg_path "your ffmpeg path"
+python scripts/demo.py --model "yolov7.yolov7-tiny_int8" --pre_api --grid --infer_device CPU --ffmpeg_path "your ffmpeg path"
 
 # Check more options
 python scripts/demo.py -h
