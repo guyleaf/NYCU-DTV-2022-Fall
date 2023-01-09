@@ -1,33 +1,24 @@
 class HlsTech {
   constructor(_options) {
     let self = this;
-    this._isLive = false;
     this._options = _options;
-    this._states = {
-      droppedFrames: 0,
-      fps: 0,
-      totalFrames: 0
-    }
+    this._video = _options.videoElement;
 
     this._config = {
       enableWorker: true,
+      autoStartLoad: true,
       liveSyncDurationCount: 1,
-      liveMaxLatencyDurationCount: 30,
-      maxLiveSyncPlaybackRate: 2,
+      liveMaxLatencyDurationCount: 10,
+      maxLiveSyncPlaybackRate: 1.8,
       liveDurationInfinity: true,
       lowLatencyMode: true,
     };
 
     this._player = new Hls(this._config);
 
-    this._player.on(Hls.Events.LEVEL_LOADED, function (event, data) {
-      if (data.details != undefined && data.details.type !== 'VOD') {
-        self._isLive = true;
-      }
-    });
-
     this._player.on(Hls.Events.MANIFEST_LOADED, function (event, data) {
-      self._options.videoElement.play();
+      // self.startLoad();
+      self._video.play();
     });
 
     this._player.on(Hls.Events.ERROR, function (eventName, data) {
@@ -38,7 +29,7 @@ class HlsTech {
           case Hls.ErrorTypes.NETWORK_ERROR:
             // try to recover network error
             console.log('fatal network error encountered, try to recover');
-            self._player.startLoad();
+            self.startLoad();
             break;
           case Hls.ErrorTypes.MEDIA_ERROR:
             console.log('fatal media error encountered, try to recover');
@@ -56,14 +47,6 @@ class HlsTech {
 
   get options() {
     return this._options;
-  };
-
-  get player() {
-    return this._player;
-  };
-
-  get isLive() {
-    return this._isLive;
   };
 
   getQualities() {
@@ -105,16 +88,21 @@ class HlsTech {
   };
 
   start() {
-    let self = this;
     this._player.loadSource(this._options.src);
-    this._player.attachMedia(this._options.videoElement);
-    setInterval(() => {
-      let videoPlaybackQuality = self._options.videoElement.getVideoPlaybackQuality();
-      self._states.droppedFrames = videoPlaybackQuality.droppedVideoFrames;
-      self._states.fps = (videoPlaybackQuality.totalVideoFrames - self._states.totalFrames);
-      self._states.totalFrames = videoPlaybackQuality.totalVideoFrames;
-      self._options.fpsElement.textContent = self._states.fps;
-    }, 1000);
+    this._player.attachMedia(this._video);
+  }
+
+  startLoad() {
+    this._player.startLoad(-1);
+  }
+
+  stopLoad() {
+    this._player.stopLoad();
+  }
+
+  reload() {
+    this.stopLoad();
+    this.startLoad();
   }
 
   destroy() {

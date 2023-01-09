@@ -22,8 +22,8 @@ class LiveStreamingServer:
         self._config = config
 
         self._app = Flask(__name__, static_folder=config.STATIC_FOLDER)
-        CORS(self._app)
-        config.configure(self._app)
+        self._config.configure(self._app)
+        # CORS(self._app)
         self._app.register_blueprint(web)
 
         atexit.register(self.stop)

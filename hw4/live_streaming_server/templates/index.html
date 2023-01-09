@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
+    />
     <title>Camera Live Stream</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,13 +18,14 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='libs/tocas/tocas.min.css') }}"
     />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='index.css') }}"
+    />
     <script src="{{ url_for('static', filename='libs/tocas/tocas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='libs/hls/hls.min.js') }}"></script>
   </head>
   <body>
-    <header>
-      <h1>Camera Live Stream</h1>
-    </header>
     <noscript>
       <style type="text/css">
         .main-container {
@@ -32,43 +36,91 @@
         You don't have javascript enabled. Good luck with that.
       </div>
     </noscript>
-    <main id="main-container">
-      <label>FPS: <label id="fps"></label></label>
-      <div>
-        <video
-          id="video"
-          width="1280"
-          height="720"
-          style="position: relative"
-          muted
-          autoplay
-          playsinline
-        ></video>
-        <canvas
-          id="canvas"
-          width="1280"
-          height="720"
-          style="position: relative; z-index: 1"
-        ></canvas>
-      </div>
 
-      <script src="{{ url_for('static', filename='streamer.js') }}"></script>
-      <script type="text/javascript">
-        var options = {
-          src: "{{ url_for('static', filename='live/' + config.M3U8_FILE) }}",
-          videoElement: document.getElementById("video"),
-          canvasElement: document.getElementById("canvas"),
-          fpsElement: document.getElementById("fps")
-        };
-        if (Hls.isSupported()) {
-          const streamer = new HlsTech(options);
-          document.addEventListener("DOMContentLoaded", function () {
-            streamer.start();
-          });
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          options.videoElement.src = options.src;
-        }
-      </script>
-    </main>
+    <div class="ts-box" style="height: 100%;">
+      <div class="ts-app-layout is-full is-horizontal">
+        <div id="sidebar" class="cell" style="width: 245px">
+          <header class="ts-content">
+            <label class="ts-header is-big is-heavy">Webcam</label>
+            <label class="ts-header is-big is-heavy">Live Stream</label>
+            <label class="ts-text is-description is-heavy">VERSION 1.0.0</label>
+          </header>
+          <div id="stream-controls-section" class="ts-content">
+            <div class="ts-row is-evenly-divided is-middle-aligned">
+              <div class="column">
+                <div class="ts-text is-secondary is-heavy">Controls</div>
+              </div>
+              <div class="column is-end-aligned">
+                <button id="reload-button" class="ts-button is-icon is-small">
+                  <span class="ts-icon is-arrow-rotate-right-icon"></span>
+                </button>
+              </div>
+            </div>
+            <div class="ts-space"></div>
+            <div class="ts-row is-evenly-divided">
+              <button id="play-button" class="column ts-button is-start-icon">
+                <span class="ts-icon is-play-icon"></span>
+                Sync
+              </button>
+              <button
+                id="pause-button"
+                class="column ts-button is-outlined is-start-icon is-disabled"
+                disabled
+              >
+                <span class="ts-icon is-pause-icon"></span>
+                Pause
+              </button>
+            </div>
+          </div>
+
+          <div id="resolutions-section" class="ts-content">
+            <label class="ts-text is-secondary is-heavy"> Resolutions </label>
+            <div class="ts-space"></div>
+            <div class="ts-warp">
+              <label class="ts-chip is-input">
+                <input type="radio" name="resolution" />
+                <div class="content">720p</div>
+              </label>
+              <label class="ts-chip is-input">
+                <input type="radio" name="resolution" />
+                <div class="content">暖氣</div>
+              </label>
+              <label class="ts-chip is-input">
+                <input type="radio" name="resolution" />
+                <div class="content">送風</div>
+              </label>
+            </div>
+          </div>
+        </div>
+        <main class="cell is-fluid ts-center">
+          <video
+            id="video"
+            src="{{ url_for('static', filename='live/' + config.M3U8_FILE) }}"
+            height="100%"
+            width="100%"
+            muted
+            playsinline
+          ></video>
+          <div id="video-loading-animation" class="ts-mask is-blurring">
+            <div class="ts-center">
+              <div
+                class="ts-loading is-notched is-large"
+                style="color: #fff"
+              ></div>
+            </div>
+          </div>
+          <div class="ts-mask is-secondary is-top">
+            <div class="ts-row is-evenly-divided">
+              <div class="column ts-content is-compact is-start-aligned">
+                <label class="ts-badge">FPS: <span id="fps">00</span></label>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='streamer.js') }}"></script>
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
   </body>
 </html>

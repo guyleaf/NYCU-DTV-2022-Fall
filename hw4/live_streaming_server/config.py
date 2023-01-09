@@ -21,14 +21,13 @@ class Config:
     SHOW_MODEL_OUTPUT: bool = False
 
     @property
-    def m3u8_root_dir(self):
+    def hls_root_folder(self):
         return os.path.join(self.STATIC_FOLDER, "live")
 
     @property
     def m3u8_file_path(self):
-        return os.path.join(self.m3u8_root_dir, self.M3U8_FILE)
+        return os.path.join(self.hls_root_folder, self.M3U8_FILE)
 
     def configure(self, app: Flask):
         app.config.from_object(self)
-        app.config.setdefault("m3u8_root_dir", self.m3u8_root_dir)
-        app.config.setdefault("m3u8_file_path", self.m3u8_file_path)
+        app.config.setdefault("HLS_ROOT_FOLDER", self.hls_root_folder)

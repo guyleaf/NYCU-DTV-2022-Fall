@@ -57,8 +57,8 @@ if __name__ == "__main__":
     config = DemoConfig()
     config.from_parser(parser)
 
-    if not os.path.exists(config.m3u8_root_dir):
-        os.mkdir(config.m3u8_root_dir)
+    if not os.path.exists(config.hls_root_folder):
+        os.mkdir(config.hls_root_folder)
 
     model = Yolov7OpenVINO(
         parser.model,
