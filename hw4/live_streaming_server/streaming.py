@@ -1,4 +1,3 @@
-from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Process
 
 import cv2
@@ -28,17 +27,17 @@ class StreamingService(Process):
                 {
                     "-resolution": "640x480",
                     "-framerate": 30.0,
-                },  # Stream3: 640x360 at 30fps framerate
+                },  # Stream3: 640x480 at 30fps framerate
                 {
-                    "-resolution": "640x360",
+                    "-resolution": "480x360",
                     "-framerate": 30.0,
-                },  # Stream3: 640x360 at 30fps framerate
+                },  # Stream3: 480x360 at 30fps framerate
             ],
             "-livestream": True,
             "-clear_prev_assets": True,
             "-hls_init_time": 2,
             "-hls_time": 1,
-            "-hls_list_size": 3,
+            "-hls_list_size": 10,
             "-vcodec": "libx264",
         }
 
@@ -82,28 +81,27 @@ class StreamingService(Process):
         try:
             start_time = time.time()
             counter = 0
-            with ProcessPoolExecutor(max_workers=4) as executor:
-                while True:
-                    # read frames from stream
-                    frame = self._stream.read()
-                    if frame is None:
-                        break
+            while True:
+                # read frames from stream
+                frame = self._stream.read()
+                if frame is None:
+                    break
 
-                    # in-place inference
-                    # self._model.infer_image(frame)
+                # in-place inference
+                self._model.infer_image(frame)
 
-                    self._streamer.stream(frame)
+                self._streamer.stream(frame)
 
-                    if not self.config.STREAMING_DEBUG:
-                        counter += 1
-                        if (time.time() - start_time) > 1:
-                            print("FPS: ", counter / (time.time() - start_time))
-                            counter = 0
-                            start_time = time.time()
+                if not self.config.STREAMING_DEBUG:
+                    counter += 1
+                    if (time.time() - start_time) > 1:
+                        print("FPS: ", counter / (time.time() - start_time))
+                        counter = 0
+                        start_time = time.time()
 
-                    if self.config.SHOW_MODEL_OUTPUT:
-                        cv2.imshow("Capture", frame)
-                        cv2.waitKey(1)
+                if self.config.SHOW_MODEL_OUTPUT:
+                    cv2.imshow("Capture", frame)
+                    cv2.waitKey(1)
         finally:
             self._stop()
 

@@ -7,6 +7,9 @@ const entry = () => {
   const pauseBtn = document.getElementById("pause-button");
   const reloadBtn = document.getElementById("reload-button");
 
+  const resolutions = document.getElementById("resolution-options");
+  const resoulutionTemplate = document.getElementById("resolution-template");
+
   let streamer = null;
   let states = {
     droppedFrames: 0,
@@ -19,7 +22,34 @@ const entry = () => {
       src: video.src,
       videoElement: video
     };
+
     streamer = new HlsTech(options);
+
+    const onResolutionOptionChange = (event) => {
+      streamer.setLevel(event.target.value);
+    }
+    streamer.on(HlsTech.Events.MANIFEST_LOADED, function (event) {
+      const levels = event.detail.levels;
+      levels.forEach(level => {
+        let resolution = resoulutionTemplate.content.cloneNode(true);
+        let label = resolution.querySelector("label");
+        let option = resolution.querySelector("input[name=resolution]");
+        let text = resolution.querySelector("div[class=content]");
+
+        option.value = level.index;
+        option.addEventListener("change", onResolutionOptionChange);
+        label.title = level.resolution;
+        text.textContent = level.height.toString() + "p";
+        resolutions.appendChild(resolution);
+      });
+
+      streamer.setLevel(-1);
+      video.play();
+    });
+    streamer.on(HlsTech.Events.LEVEL_SWITCHED, function (event) {
+      console.log(`Change resolution to ${event.detail.level.height}p`);
+    });
+
     streamer.start();
   } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
     video.play();
@@ -62,9 +92,9 @@ const entry = () => {
     videoLoadingAnimation.hidden = false;
     streamer?.reload();
     video.play()
-    .then(() => {
-      videoLoadingAnimation.hidden = true;
-    });
+      .then(() => {
+        videoLoadingAnimation.hidden = true;
+      });
   });
 };
 

@@ -37,7 +37,7 @@
       </div>
     </noscript>
 
-    <div class="ts-box" style="height: 100%;">
+    <div class="ts-box" style="height: 100%">
       <div class="ts-app-layout is-full is-horizontal">
         <div id="sidebar" class="cell" style="width: 245px">
           <header class="ts-content">
@@ -76,19 +76,11 @@
           <div id="resolutions-section" class="ts-content">
             <label class="ts-text is-secondary is-heavy"> Resolutions </label>
             <div class="ts-space"></div>
-            <div class="ts-warp">
-              <label class="ts-chip is-input">
-                <input type="radio" name="resolution" />
-                <div class="content">720p</div>
+            <label class="ts-chip is-input">
+                <input type="radio" name="resolution" value="-1" checked/>
+                <div class="content">Auto</div>
               </label>
-              <label class="ts-chip is-input">
-                <input type="radio" name="resolution" />
-                <div class="content">暖氣</div>
-              </label>
-              <label class="ts-chip is-input">
-                <input type="radio" name="resolution" />
-                <div class="content">送風</div>
-              </label>
+            <div id="resolution-options" class="ts-warp">
             </div>
           </div>
         </div>
@@ -123,4 +115,10 @@
     <script src="{{ url_for('static', filename='streamer.js') }}"></script>
     <script src="{{ url_for('static', filename='index.js') }}"></script>
   </body>
+  <template id="resolution-template">
+    <label class="ts-chip is-input">
+      <input type="radio" name="resolution" value="" />
+      <div class="content"></div>
+    </label>
+  </template>
 </html>

@@ -1,14 +1,20 @@
-class HlsTech {
+class HlsTech extends EventTarget {
+  static Events = {
+    MANIFEST_LOADED: "MANIFEST_LOADED",
+    LEVEL_SWITCHED: "LEVEL_SWITCHED"
+  }
+
   constructor(_options) {
+    super();
     let self = this;
     this._options = _options;
     this._video = _options.videoElement;
-
     this._config = {
+      debug: false,
       enableWorker: true,
       autoStartLoad: true,
       liveSyncDurationCount: 1,
-      liveMaxLatencyDurationCount: 10,
+      liveMaxLatencyDurationCount: 8,
       maxLiveSyncPlaybackRate: 1.8,
       liveDurationInfinity: true,
       lowLatencyMode: true,
@@ -17,9 +23,20 @@ class HlsTech {
     this._player = new Hls(this._config);
 
     this._player.on(Hls.Events.MANIFEST_LOADED, function (event, data) {
-      // self.startLoad();
-      self._video.play();
+      self.dispatchEvent(new CustomEvent(HlsTech.Events.MANIFEST_LOADED, {
+        detail: {
+          levels: self.getLevels()
+        }
+      }));
     });
+
+    this._player.on(Hls.Events.LEVEL_SWITCHED, function (event, data) {
+      self.dispatchEvent(new CustomEvent(HlsTech.Events.LEVEL_SWITCHED, {
+        detail: {
+          level: self.getLevel(data.level)
+        }
+      }));
+    })
 
     this._player.on(Hls.Events.ERROR, function (eventName, data) {
       console.warn('Error event:', data);
@@ -45,46 +62,52 @@ class HlsTech {
     });
   }
 
-  get options() {
-    return this._options;
-  };
+  on(event, callback) {
+    this.addEventListener(event, callback, false);
+  }
 
-  getQualities() {
-    var u = this._player.levels;
-    var bitrates = [];
+  getLevel(index) {
+    index = parseInt(index);
+    let level = this._player.levels[index];
+    let data = {
+      index: level.level != undefined ? level.level : index,
+      bitrate: level.bitrate,
+      height: level.height,
+      width: level.width,
+      resolution: level.attrs.RESOLUTION,
+      bane: level.name
+    };
+    return data;
+  }
 
-    for (var i = 0; i < u.length; i++) {
-      var b = {};
-      b.index = u[i].level != undefined ? u[i].level : i;
-      b.bitrate = u[i].bitrate;
-      b.height = u[i].height;
-      b.width = u[i].width;
-      b.resolution = u[i].attrs.RESOLUTION
-      b.bane = u[i].name;
-      bitrates.push(b);
+  getLevels() {
+    var levels = [];
+
+    for (var i = 0; i < this._player.levels.length; i++) {
+      levels.push(this.getLevel(i));
     }
 
-    return bitrates;
+    return levels;
   };
 
-  setQuality(index) {
+  setLevel(index) {
     index = parseInt(index);
-    this._player.currentLevel = index;
+    this._player.nextLevel = index;
   };
 
-  setMaxQuality() {
-    var qualities = this.getQualities();
+  setMaxLevel() {
+    var levels = this.getLevels();
     maxQualityIndex = -1;
     bitrate = 0;
 
-    for (var i = 0; i < qualities.length; i++) {
-      if (qualities[i].bitrate > bitrate) {
-        bitrate = qualities[i].bitrate;
+    for (var i = 0; i < levels.length; i++) {
+      if (levels[i].bitrate > bitrate) {
+        bitrate = levels[i].bitrate;
         maxQualityIndex = i;
       }
     }
 
-    this.setQuality(maxQualityIndex);
+    this.setLevel(maxQualityIndex);
   };
 
   start() {
