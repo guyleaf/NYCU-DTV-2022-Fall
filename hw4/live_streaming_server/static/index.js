@@ -1,12 +1,12 @@
 const entry = () => {
   const video = document.getElementById("video");
   const videoLoadingAnimation = document.getElementById("video-loading-animation");
-  const canvas = document.getElementById("canvas");
   const fps = document.getElementById("fps");
   const playBtn = document.getElementById("play-button");
   const pauseBtn = document.getElementById("pause-button");
   const reloadBtn = document.getElementById("reload-button");
 
+  const autoResolutionOption = document.getElementById("auto-resolution-option");
   const resolutions = document.getElementById("resolution-options");
   const resoulutionTemplate = document.getElementById("resolution-template");
 
@@ -42,6 +42,7 @@ const entry = () => {
         text.textContent = level.height.toString() + "p";
         resolutions.appendChild(resolution);
       });
+      autoResolutionOption.addEventListener("change", onResolutionOptionChange);
 
       streamer.setLevel(-1);
       video.play();
