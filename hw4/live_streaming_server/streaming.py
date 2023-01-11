@@ -27,11 +27,11 @@ class StreamingService(Process):
                 {
                     "-resolution": "640x480",
                     "-framerate": 24.0,
-                },  # Stream3: 640x480 at 30fps framerate
+                },  # Stream3: 640x480 at 24fps framerate
                 {
                     "-resolution": "480x360",
                     "-framerate": 24.0,
-                },  # Stream3: 480x360 at 30fps framerate
+                },  # Stream3: 480x360 at 24fps framerate
             ],
             "-livestream": True,
             "-clear_prev_assets": True,
