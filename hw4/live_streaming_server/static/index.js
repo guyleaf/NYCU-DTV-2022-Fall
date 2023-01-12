@@ -116,13 +116,15 @@ const entry = () => {
       success: function (response) {
         console.log(response);
         if (response.data.exists) {
-          if (isHlsSupported) {
-            streamer.start();
-          }
-          else {
-            video.play();
-          }
-          bindElements(streamer);
+          setTimeout(() => {
+            if (isHlsSupported) {
+              streamer.start();
+            }
+            else {
+              video.play();
+            }
+            bindElements(streamer);
+          }, 3000);
         }
         else {
           setTimeout(waitForStreaming, 1000);
