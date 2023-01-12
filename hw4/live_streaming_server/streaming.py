@@ -142,7 +142,6 @@ class StreamingService(Process):
                     if frame is None:
                         break
 
-                    # in-place inference
                     box_info = self._model.infer_image(frame)
 
                     for streaming in self._streamings.values():

@@ -8,6 +8,5 @@ main {
 
 #class-options {
   overflow-y: auto;
-  min-height: 10vh;
-  max-height: 50vh;
+  height: max(calc(100vh - 500px), 100px);
 }
