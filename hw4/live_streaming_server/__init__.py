@@ -2,12 +2,13 @@ import atexit
 import logging
 import os
 
+from multiprocessing.connection import Connection
 from flask import Flask
 from flask_cors import CORS
 
 from .config import Config
 from .streaming import StreamingService
-from .routes import web
+from .routes import web, assign_pipes
 
 
 def get_root():
@@ -16,10 +17,16 @@ def get_root():
 
 class LiveStreamingServer:
     def __init__(
-        self, streaming_service: StreamingService, config: Config
+        self,
+        adding_streamer_pipe: Connection,
+        updating_classes_pipe: Connection,
+        streaming_service: StreamingService,
+        config: Config,
     ) -> None:
         self._streaming_service = streaming_service
         self._config = config
+
+        assign_pipes(adding_streamer_pipe, updating_classes_pipe)
 
         self._app = Flask(__name__, static_folder=config.STATIC_FOLDER)
         self._config.configure(self._app)

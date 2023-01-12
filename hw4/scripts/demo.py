@@ -1,4 +1,6 @@
 import os
+import shutil
+from multiprocessing import Pipe
 from typing import Literal
 
 from tap import Tap
@@ -57,19 +59,38 @@ if __name__ == "__main__":
     config = DemoConfig()
     config.from_parser(parser)
 
-    if not os.path.exists(config.hls_root_folder):
-        os.mkdir(config.hls_root_folder)
+    if os.path.exists(config.hls_root_folder):
+        shutil.rmtree(config.hls_root_folder)
+    os.mkdir(config.hls_root_folder)
 
     model = Yolov7OpenVINO(
         parser.model,
         parser.infer_device,
         parser.pre_api,
-        1,
         parser.grid,
         parser.end2end,
         parser.conf_threshold,
         parser.iou_threshold,
     )
-    service = StreamingService(model, config=config)
-    server = LiveStreamingServer(service, config=config)
+    config.CLASSES = model.classes
+
+    adding_streamer_pipe_receiver, adding_streamer_pipe_sender = Pipe(
+        duplex=False
+    )
+    updating_classes_pipe_receiver, updating_classes_pipe_sender = Pipe(
+        duplex=False
+    )
+
+    service = StreamingService(
+        adding_streamer_pipe_receiver,
+        updating_classes_pipe_receiver,
+        model,
+        config=config,
+    )
+    server = LiveStreamingServer(
+        adding_streamer_pipe_sender,
+        updating_classes_pipe_sender,
+        service,
+        config=config,
+    )
     server.start()

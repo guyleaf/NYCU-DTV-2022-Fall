@@ -1,3 +1,4 @@
+import random
 import cv2
 import numpy as np
 from openvino.preprocess import ColorFormat, PrePostProcessor
@@ -12,18 +13,19 @@ class OpenVINOBase:
         model: str,
         device: str,
         pre_api: bool,
-        batchsize: int,
         classes: list[str],
         img_size: tuple[int],
     ) -> None:
         # set the hyperparameters
         self._classes = classes
-        self.batchsize = batchsize
         self.img_size = img_size
         self.pre_api = pre_api
         self.device = device
 
         self._model = model
+        self._colors = [
+            [random.randint(0, 255) for _ in range(3)] for _ in self._classes
+        ]
 
     @property
     def classes(self):
@@ -65,9 +67,7 @@ class OpenVINOBase:
         model_path = get_model_path(self._model)
         self.model = ie.read_model(model_path)
         self.input_layer = self.model.input(0)
-        new_shape = PartialShape(
-            [self.batchsize, 3, self.img_size[0], self.img_size[1]]
-        )
+        new_shape = PartialShape([1, 3, self.img_size[0], self.img_size[1]])
         self.model.reshape({self.input_layer.any_name: new_shape})
         if self.pre_api:
             # Preprocessing API
@@ -91,11 +91,53 @@ class OpenVINOBase:
             model=self.model, device_name=self.device, config=config
         )
 
-    def postprocess(self, infer_request, info):
+    def plot_one_box(
+        self, x, img, color=None, label=None, line_thickness=None
+    ):
+        # Plots one bounding box on image img
+        tl = (
+            line_thickness
+            or round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1
+        )  # line/font thickness
+        color = color or [random.randint(0, 255) for _ in range(3)]
+        c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
+        cv2.rectangle(img, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
+        if label:
+            tf = max(tl - 1, 1)  # font thickness
+            t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[
+                0
+            ]
+            c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+            cv2.rectangle(img, c1, c2, color, -1, cv2.LINE_AA)  # filled
+            cv2.putText(
+                img,
+                label,
+                (c1[0], c1[1] - 2),
+                0,
+                tl / 3,
+                [225, 255, 255],
+                thickness=tf,
+                lineType=cv2.LINE_AA,
+            )
+
+    def draw(self, img, box_info):
+        for xyxy, conf, cls in box_info:
+            cls = int(cls)
+            conf = float(conf)
+            label = f"{self._classes[cls]} {conf:.1f}"
+            self.plot_one_box(
+                xyxy,
+                img,
+                label=label,
+                color=self._colors[cls],
+                line_thickness=3,
+            )
+
+    def postprocess(self, infer_request, src_size):
         raise NotImplementedError("The method postprocess is not implemented.")
 
-    def infer_image(self, src_img: cv2.Mat):
-        src_img_list = [src_img]
+    # return: [x, y, x, y, score, class_ind]
+    def infer_image(self, src_img: cv2.Mat) -> np.ndarray:
         img = self.letterbox(src_img, self.img_size)
 
         src_size = src_img.shape[:2]
@@ -110,4 +152,4 @@ class OpenVINOBase:
         infer_request = self.compiled_model.create_infer_request()
         infer_request.start_async({self.input_layer.any_name: input_image})
         infer_request.wait()
-        self.postprocess(infer_request, (src_img_list, src_size))
+        return self.postprocess(infer_request, src_size)

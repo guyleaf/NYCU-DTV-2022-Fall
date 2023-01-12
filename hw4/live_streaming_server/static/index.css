@@ -5,3 +5,9 @@ body {
 main {
   background-color: black;
 }
+
+#class-options {
+  overflow-y: auto;
+  min-height: 10vh;
+  max-height: 50vh;
+}

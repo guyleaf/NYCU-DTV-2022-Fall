@@ -1,7 +1,5 @@
 # Reference: https://github.com/OpenVINO-dev-contest/YOLOv7_OpenVINO_cpp-python/blob/360ac86f6d82aed187b5e2ed57a70d22ad59f64f/python/yolov7.py # noqa: E501
 
-import random
-
 import cv2
 import numpy as np
 
@@ -15,7 +13,6 @@ class Yolov7OpenVINO(OpenVINOBase):
         model: str,
         device: str,
         pre_api: bool,
-        batchsize: int,
         grid: bool,
         end2end: bool,
         conf_thres: float = 0.25,
@@ -25,7 +22,6 @@ class Yolov7OpenVINO(OpenVINOBase):
             model,
             device,
             pre_api,
-            batchsize,
             COCO2017_CLASSES,
             (640, 640),
         )
@@ -35,9 +31,6 @@ class Yolov7OpenVINO(OpenVINOBase):
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
         self.class_num = len(self._classes)
-        self.colors = [
-            [random.randint(0, 255) for _ in range(3)] for _ in self._classes
-        ]
         self.stride = [8, 16, 32]
         self.anchor_list = [
             [12, 16, 19, 36, 40, 28],
@@ -128,126 +121,79 @@ class Yolov7OpenVINO(OpenVINOBase):
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
 
-    def plot_one_box(
-        self, x, img, color=None, label=None, line_thickness=None
-    ):
-        # Plots one bounding box on image img
-        tl = (
-            line_thickness
-            or round(0.002 * (img.shape[0] + img.shape[1]) / 2) + 1
-        )  # line/font thickness
-        color = color or [random.randint(0, 255) for _ in range(3)]
-        c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
-        cv2.rectangle(img, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
-        if label:
-            tf = max(tl - 1, 1)  # font thickness
-            t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[
-                0
-            ]
-            c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
-            cv2.rectangle(img, c1, c2, color, -1, cv2.LINE_AA)  # filled
-            cv2.putText(
-                img,
-                label,
-                (c1[0], c1[1] - 2),
-                0,
-                tl / 3,
-                [225, 255, 255],
-                thickness=tf,
-                lineType=cv2.LINE_AA,
+    def postprocess(self, infer_request, src_size):
+        if self.end2end:
+            results = np.expand_dims(
+                infer_request.get_output_tensor(0).data, axis=0
+            )
+        elif self.grid:
+            results = np.expand_dims(
+                infer_request.get_output_tensor(0).data[0], axis=0
+            )
+        else:
+            output = []
+            # Get the each feature map's output data
+            output.append(
+                self.sigmoid(
+                    infer_request.get_output_tensor(0)
+                    .data[0]
+                    .reshape(-1, self.size[0] * 3, 5 + self.class_num)
+                )
+            )
+            output.append(
+                self.sigmoid(
+                    infer_request.get_output_tensor(1)
+                    .data[0]
+                    .reshape(-1, self.size[1] * 3, 5 + self.class_num)
+                )
+            )
+            output.append(
+                self.sigmoid(
+                    infer_request.get_output_tensor(2)
+                    .data[0]
+                    .reshape(-1, self.size[2] * 3, 5 + self.class_num)
+                )
             )
 
-    def draw(self, img, boxinfo):
-        for xyxy, conf, cls in boxinfo:
-            cls = int(cls)
-            conf = float(conf)
-            label = f"{self._classes[cls]} {conf:.1f}"
-            self.plot_one_box(
-                xyxy,
-                img,
-                label=label,
-                color=self.colors[cls],
-                line_thickness=3,
+            # Postprocessing
+            grid = []
+            for _, f in enumerate(self.feature):
+                grid.append([[i, j] for j in range(f[0]) for i in range(f[1])])
+
+            result = []
+            for i in range(3):
+                src = output[i]
+                xy = src[..., 0:2] * 2.0 - 0.5
+                wh = (src[..., 2:4] * 2) ** 2
+                dst_xy = []
+                dst_wh = []
+                for j in range(3):
+                    left = j * self.size[i]
+                    right = (j + 1) * self.size[i]
+                    dst_xy.append(
+                        (xy[:, left:right, :] + grid[i]) * self.stride[i]
+                    )
+                    dst_wh.append(wh[:, left:right, :] * self.anchor[i][j])
+                src[..., 0:2] = np.concatenate(
+                    (dst_xy[0], dst_xy[1], dst_xy[2]), axis=1
+                )
+                src[..., 2:4] = np.concatenate(
+                    (dst_wh[0], dst_wh[1], dst_wh[2]), axis=1
+                )
+                result.append(src)
+            results = np.concatenate(result, 1)
+
+        if self.end2end:
+            results = results[0]
+            _, boxes, class_ids, scores = np.split(results, [1, 5, 6], axis=-1)
+        else:
+            boxes, scores, class_ids = self.nms(
+                results, self.conf_thres, self.iou_thres
             )
 
-    def postprocess(self, infer_request, info):
-        src_img_list, src_size = info
-        for batch_id in range(self.batchsize):
-            if self.end2end:
-                results = np.expand_dims(
-                    infer_request.get_output_tensor(0).data, axis=0
-                )
-            elif self.grid:
-                results = np.expand_dims(
-                    infer_request.get_output_tensor(0).data[batch_id], axis=0
-                )
-            else:
-                output = []
-                # Get the each feature map's output data
-                output.append(
-                    self.sigmoid(
-                        infer_request.get_output_tensor(0)
-                        .data[batch_id]
-                        .reshape(-1, self.size[0] * 3, 5 + self.class_num)
-                    )
-                )
-                output.append(
-                    self.sigmoid(
-                        infer_request.get_output_tensor(1)
-                        .data[batch_id]
-                        .reshape(-1, self.size[1] * 3, 5 + self.class_num)
-                    )
-                )
-                output.append(
-                    self.sigmoid(
-                        infer_request.get_output_tensor(2)
-                        .data[batch_id]
-                        .reshape(-1, self.size[2] * 3, 5 + self.class_num)
-                    )
-                )
+        img_shape = self.img_size
+        self.scale_coords(img_shape, src_size, boxes)
 
-                # Postprocessing
-                grid = []
-                for _, f in enumerate(self.feature):
-                    grid.append(
-                        [[i, j] for j in range(f[0]) for i in range(f[1])]
-                    )
-
-                result = []
-                for i in range(3):
-                    src = output[i]
-                    xy = src[..., 0:2] * 2.0 - 0.5
-                    wh = (src[..., 2:4] * 2) ** 2
-                    dst_xy = []
-                    dst_wh = []
-                    for j in range(3):
-                        left = j * self.size[i]
-                        right = (j + 1) * self.size[i]
-                        dst_xy.append(
-                            (xy[:, left:right, :] + grid[i]) * self.stride[i]
-                        )
-                        dst_wh.append(wh[:, left:right, :] * self.anchor[i][j])
-                    src[..., 0:2] = np.concatenate(
-                        (dst_xy[0], dst_xy[1], dst_xy[2]), axis=1
-                    )
-                    src[..., 2:4] = np.concatenate(
-                        (dst_wh[0], dst_wh[1], dst_wh[2]), axis=1
-                    )
-                    result.append(src)
-                results = np.concatenate(result, 1)
-
-            if self.end2end:
-                results = results[0]
-                _, boxes, class_ids, scores = np.split(
-                    results, [1, 5, 6], axis=-1
-                )
-            else:
-                boxes, scores, class_ids = self.nms(
-                    results, self.conf_thres, self.iou_thres
-                )
-
-            img_shape = self.img_size
-            self.scale_coords(img_shape, src_size, boxes)
-
-            # Draw the results
-            self.draw(src_img_list[batch_id], zip(boxes, scores, class_ids))
+        scores = np.expand_dims(scores, axis=-1)
+        class_ids = np.expand_dims(class_ids, axis=-1)
+        return np.concatenate((boxes, scores, class_ids), axis=-1)

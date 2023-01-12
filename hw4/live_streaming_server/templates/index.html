@@ -22,6 +22,7 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='index.css') }}"
     />
+    <script src="{{ url_for('static', filename='libs/jquery/jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='libs/tocas/tocas.min.js') }}"></script>
     <script src="{{ url_for('static', filename='libs/hls/hls.min.js') }}"></script>
   </head>
@@ -78,17 +79,51 @@
             <div class="ts-space"></div>
             <div class="ts-wrap is-vertical is-compact">
               <label class="ts-chip is-input">
-                <input id="auto-resolution-option" title="auto" type="radio" name="resolution" value="-1" checked />
+                <input
+                  id="auto-resolution-option"
+                  title="auto"
+                  type="radio"
+                  name="resolution"
+                  value="-1"
+                  checked
+                />
                 <div class="content">Auto</div>
               </label>
               <div id="resolution-options" class="ts-warp"></div>
+            </div>
+          </div>
+
+          <div id="class-section" class="ts-content">
+            <label class="ts-text is-secondary is-heavy"> Classes </label>
+            <div class="ts-space"></div>
+            <div id="class-options" class="ts-wrap is-compact">
+              {% for class in classes %}
+              <label class="ts-chip is-input" title="{{ class }}">
+                {% set is_selected = selected_classes.get(loop.index0|string,
+                True) %} {% if is_selected %}
+                <input
+                  type="checkbox"
+                  name="{{ class }}"
+                  value="{{ loop.index0 }}"
+                  checked
+                />
+                {% else %}
+                <input
+                  type="checkbox"
+                  name="{{ class }}"
+                  value="{{ loop.index0 }}"
+                />
+                {% endif %}
+                <div class="content">{{ class }}</div>
+              </label>
+              {% endfor %}
             </div>
           </div>
         </div>
         <main class="cell is-fluid ts-center">
           <video
             id="video"
-            src="{{ url_for('static', filename='live/' + config.M3U8_FILE) }}"
+            src="{{ url_for('static', filename='live/' + id + '/' + config.M3U8_FILE) }}"
             height="100%"
             width="100%"
             muted
