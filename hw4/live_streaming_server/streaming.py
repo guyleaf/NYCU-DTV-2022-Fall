@@ -19,25 +19,25 @@ class StreamingService(Process):
         self._camera_params = {
             "CAP_PROP_FRAME_WIDTH": 1280,
             "CAP_PROP_FRAME_HEIGHT": 720,
-            "CAP_PROP_FPS": 24,
+            "CAP_PROP_FPS": 15,
             "CAP_PROP_FOURCC": cv2.VideoWriter_fourcc(*"MJPG"),
         }
         self._stream_params = {
             "-streams": [
                 {
                     "-resolution": "960x540",
-                    "-framerate": 24.0,
+                    "-framerate": 15.0,
                 },  # Stream3: 960x540 at 24fps framerate
                 {
                     "-resolution": "640x360",
-                    "-framerate": 24.0,
+                    "-framerate": 15.0,
                 },  # Stream3: 640x360 at 24fps framerate
             ],
             "-livestream": True,
             "-clear_prev_assets": True,
             "-hls_init_time": 2,
             "-hls_time": 1,
-            "-hls_list_size": 10,
+            "-hls_list_size": 15,
             "-vcodec": "libx264",
         }
 
