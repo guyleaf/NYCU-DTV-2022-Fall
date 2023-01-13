@@ -52,7 +52,7 @@ class StreamingService(Process):
             ],
             "-livestream": True,
             "-clear_prev_assets": True,
-            "-hls_init_time": 4,
+            "-hls_init_time": 2,
             "-hls_time": 1,
             "-hls_list_size": 15,
             "-vcodec": "libx264",
