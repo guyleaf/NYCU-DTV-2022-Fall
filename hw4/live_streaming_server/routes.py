@@ -59,3 +59,6 @@ def detections():
         session["selected_classes"] = data
         return make_response("Success")
     return make_response("Incorrect data format.", status_code=400)
+
+
+

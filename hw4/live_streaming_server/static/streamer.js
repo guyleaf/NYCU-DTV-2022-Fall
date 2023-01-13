@@ -13,7 +13,7 @@ class HlsTech extends EventTarget {
       debug: false,
       enableWorker: true,
       autoStartLoad: true,
-      liveSyncDurationCount: 5,
+      liveSyncDurationCount: 1,
       liveMaxLatencyDurationCount: 10,
       maxLiveSyncPlaybackRate: 1.8,
       liveDurationInfinity: true,

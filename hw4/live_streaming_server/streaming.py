@@ -36,7 +36,7 @@ class StreamingService(Process):
         self._camera_params = {
             "CAP_PROP_FRAME_WIDTH": 1280,
             "CAP_PROP_FRAME_HEIGHT": 720,
-            "CAP_PROP_FPS": 13,
+            "CAP_PROP_FPS": 30,
             "CAP_PROP_FOURCC": cv2.VideoWriter_fourcc(*"MJPG"),
         }
         self._stream_params = {
@@ -47,7 +47,7 @@ class StreamingService(Process):
                 # },  # Stream3: 960x540 at 24fps framerate
                 {
                     "-resolution": "640x360",
-                    "-framerate": 13.0,
+                    "-framerate": 30.0,
                 },  # Stream3: 640x360 at 24fps framerate
             ],
             "-livestream": True,
@@ -101,10 +101,11 @@ class StreamingService(Process):
     def send_to_streaming(
         self, streaming: dict[str, Any], frame: cv2.Mat, box_info: np.ndarray
     ):
-        frame = frame.copy()
-        self._model.draw(
-            frame, self._filter_bboxes(box_info, streaming["classes"])
-        )
+        # frame = frame.copy()
+        # self._model.draw(
+        #     frame,
+        #     self._filter_bboxes(box_info, streaming["classes"])
+        # )
         streamer: StreamGear = streaming["streamer"]
         streamer.stream(frame)
 
@@ -142,7 +143,8 @@ class StreamingService(Process):
                     if frame is None:
                         break
 
-                    box_info = self._model.infer_image(frame)
+                    # box_info = self._model.infer_image(frame)
+                    box_info = np.array([])
 
                     for streaming in self._streamings.values():
                         # self.send_to_streaming(streaming, frame, box_info)
