@@ -1,5 +1,13 @@
 from multiprocessing.connection import Connection
-from flask import Blueprint, render_template, request, session, current_app
+from flask import (
+    Blueprint,
+    abort,
+    redirect,
+    render_template,
+    request,
+    session,
+    current_app,
+)
 import secrets
 import os
 
@@ -19,6 +27,9 @@ def assign_pipes(streamer_pipe: Connection, classes_pipe: Connection):
 
 @web.route("/", methods=["GET"])
 def index():
+    if not session.get("is_logined", False):
+        return redirect("/login")
+
     if "id" not in session:
         session["id"] = secrets.token_hex(16)
         session["selected_classes"] = {}
@@ -61,4 +72,16 @@ def detections():
     return make_response("Incorrect data format.", status_code=400)
 
 
+@web.route("/login", methods=["GET"])
+def login_page():
+    if session.get("is_logined", False):
+        return redirect("/")
+    return render_template("login.html")
 
+
+@web.route("/login", methods=["POST"])
+def login():
+    if request.form.get("pwd") == "abcdefg":
+        session["is_logined"] = True
+        return redirect("/")
+    return abort(403)
