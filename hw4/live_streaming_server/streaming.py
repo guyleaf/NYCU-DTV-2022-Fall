@@ -101,11 +101,11 @@ class StreamingService(Process):
     def send_to_streaming(
         self, streaming: dict[str, Any], frame: cv2.Mat, box_info: np.ndarray
     ):
-        # frame = frame.copy()
-        # self._model.draw(
-        #     frame,
-        #     self._filter_bboxes(box_info, streaming["classes"])
-        # )
+        frame = frame.copy()
+        self._model.draw(
+            frame,
+            self._filter_bboxes(box_info, streaming["classes"])
+        )
         streamer: StreamGear = streaming["streamer"]
         streamer.stream(frame)
 
@@ -143,8 +143,7 @@ class StreamingService(Process):
                     if frame is None:
                         break
 
-                    # box_info = self._model.infer_image(frame)
-                    box_info = np.array([])
+                    box_info = self._model.infer_image(frame)
 
                     for streaming in self._streamings.values():
                         # self.send_to_streaming(streaming, frame, box_info)
